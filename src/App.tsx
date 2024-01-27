@@ -20,7 +20,7 @@ function BoardSquare(pos: Vector2, piece : Piece | null, litUpSquares : Array<Ve
 
   return (
     <div onClick={()=>{updateLitSquares(piece?.GetLegalMoves(gameBoard) || []); console.log(pos)}} key={pos.x + ":" + pos.y} style={style} className={(isEven? "evenSquare" : "oddSquare") + " boardSquare"}>
-      {piece? <span className={"fas fa-chess-" + piece.name}></span> : ""}
+      {piece? <span className={"fas fa-chess-" + piece.name + (piece.isWhite? "": " black")}></span> : ""}
     </div>
   )
 }

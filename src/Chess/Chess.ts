@@ -46,10 +46,47 @@ export class ChessBoard{
             this.state[i] = this.state[i].fill(null)
             
         } 
-        this.state[3][4] = new Knight(true, {x: 3, y : 4})
-        this.state[2][2] = new Pawn(true, {x:2,y:2});
-        this.state[3][5] = new Bishop(true, {x: 3, y: 5});
-        this.state[4][2] = new Rook(true, {x: 4, y: 2});
+        //Manually map the starting positions
+
+        //Black's back row
+        this.state[0][0] = new Rook  (false, {x: 0, y : 0});
+        this.state[1][0] = new Knight(false, {x:1,y:0});
+        this.state[2][0] = new Bishop(false, {x: 2, y: 0});
+        this.state[3][0] = new Queen (false, {x: 3, y: 0});
+        this.state[4][0] = new King  (false, {x:4 , y:0});
+        this.state[5][0] = new Bishop(false, {x:5, y:0});
+        this.state[6][0] = new Knight(false, {x: 6, y:0});
+        this.state[7][0] = new Rook  (false, {x: 7, y:0});
+
+        //Black's Front row
+        this.state[0][1] = new Pawn(false,  {x: 0, y : 1});
+        this.state[1][1] = new Pawn(false,{x:1,y:  1});
+        this.state[2][1] = new Pawn(false,{x: 2, y: 1});
+        this.state[3][1] = new Pawn(false, {x: 3, y: 1});
+        this.state[4][1] = new Pawn(false, {x:4 , y:1});
+        this.state[5][1] = new Pawn(false, {x:5, y:1});
+        this.state[6][1] = new Pawn(false, {x: 6, y:1});
+        this.state[7][1] = new Pawn(false, {x: 7, y:1});
+
+        //White's back row
+        this.state[0][7] = new Rook  (false, {x: 0, y: 7});
+        this.state[1][7] = new Knight(false, {x: 1, y: 7});
+        this.state[2][7] = new Bishop(false, {x: 2, y: 7});
+        this.state[3][7] = new Queen (false, {x: 3, y: 7});
+        this.state[4][7] = new King  (false, {x: 4, y: 7});
+        this.state[5][7] = new Bishop(false, {x: 5, y: 7});
+        this.state[6][7] = new Knight(false, {x: 6, y: 7});
+        this.state[7][7] = new Rook  (false, {x: 7, y: 7});
+
+        //White's Front row
+        this.state[0][6] = new Pawn(true, {x: 0, y: 6});
+        this.state[1][6] = new Pawn(true, {x: 1, y: 6});
+        this.state[2][6] = new Pawn(true, {x: 2, y: 6});
+        this.state[3][6] = new Pawn(true, {x: 3, y: 6});
+        this.state[4][6] = new Pawn(true, {x: 4, y: 6});
+        this.state[5][6] = new Pawn(true, {x: 5, y: 6});
+        this.state[6][6] = new Pawn(true, {x: 6, y: 6});
+        this.state[7][6] = new Pawn(true, {x: 7, y: 6});
     }
 
     /**
@@ -132,6 +169,33 @@ export abstract class Piece{
     }
     public GetLegalMoves(board : ChessBoard) : Array<Vector2> {
         return [];
+    }
+
+
+}
+
+export class ShortDistanceMover extends Piece{
+
+    moveOffsets : Vector2[] = []
+
+    public GetLegalMoves(board : ChessBoard) : Array<Vector2>{
+        //Get the specific positions that a knight can get
+        console.log(this.moveOffsets)
+        let legalPositions = this.moveOffsets.map(offset=>{
+            const result = {x: this.position.x + offset.x, y: this.position.y + offset.y};
+
+            if(!CheckIfMoveIsOnBoard(result)){
+                return undefined;
+            }
+            if(board.state[result.x][result.y] && board.state[result.x][result.y]?.isWhite === this.isWhite){
+                return undefined
+            }
+
+            return result
+        })
+        const trimmedLegalPositions  = legalPositions.filter((val): val is Vector2=>{return val !== undefined})
+
+        return trimmedLegalPositions;
     }
 
 
@@ -240,6 +304,7 @@ abstract class LongDistanceMover extends Piece{
                 if(square){
                     if(square.isWhite !== this.isWhite){
                         moves.push(currentPos);
+                        break
                     }
                     else if(square !== this){
                         break;
@@ -270,9 +335,7 @@ class Bishop extends LongDistanceMover{
         {x:-1, y:-1}
     ]
 
-    public  GetLegalMoves(board: ChessBoard): Vector2[] {
-        return super.GetLegalMoves(board);
-    }
+
 }
 
 class Rook extends LongDistanceMover{
@@ -285,7 +348,33 @@ class Rook extends LongDistanceMover{
         {x:-1, y:0}
     ]
 
-    public GetLegalMoves(board: ChessBoard): Vector2[] {
-        return super.GetLegalMoves(board);
-    }
+
+}
+
+class Queen extends LongDistanceMover{
+
+    name = "queen"
+    offsets: Vector2[] = [
+        {x:0, y:1},
+        {x:0, y:-1},
+        {x:1, y:0},
+        {x:-1, y:0},
+        {x: 1, y: 1},
+        {x: -1, y:1},
+        {x: 1, y:-1},
+        {x:-1, y:-1}
+    ]
+}
+class King extends ShortDistanceMover{
+    name = "king"
+    moveOffsets: Vector2[] = [
+        {x:0, y:1},
+        {x:0, y:-1},
+        {x:1, y:0},
+        {x:-1, y:0},
+        {x: 1, y: 1},
+        {x: -1, y:1},
+        {x: 1, y:-1},
+        {x:-1, y:-1}
+    ]
 }
