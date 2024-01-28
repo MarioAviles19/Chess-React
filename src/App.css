@@ -6,24 +6,86 @@
   text-align: center;
 }
 body{
-  background-color: rgb(142, 171, 167);
+  background-color: rgb(130, 180, 140);
 }
 .background{
-  background-color: rgb(226, 214, 166);
+  background-color: rgb(214, 205, 169);
   position: absolute;
   top:15rem;
   left:0;
   width: 100%;
   height: calc(100% - 15rem);
+  z-index: 5;
+}
+.bottomShadow{
+  background-color: #27201da2;
+  position: absolute;
+  top:1.5rem;
+  left:1.5rem;
+  width: 100%;
+  height:100%;
+  filter: blur(0.5rem);
+  border-radius: 2rem;
+  z-index: -5;
+}
+.topShadow{
+  position: absolute;
+  bottom:0rem;
+  left:0rem;
+  width: 100%;
+  height:calc(100% - 6rem);
+  z-index: 6;
+  background-color: #a69e96;
+  box-shadow: 5px 5px 7px 2px #373430ad;
+  border-radius: 0 0 2rem 2rem;
+}
+.bottomHeavyShadow{
+  background-color: #2e3637b1;
+  filter: blur(3rem);
+  position: absolute;
+  top:2rem;
+  left:2rem;
+  z-index: -6;
+}
+.gameWrapper{
+  position: relative;
+  width: clamp(15rem, 100%, 30rem);
+  margin:auto;
+}
+.panel{
+  position: relative;
+  background-color: #FAEFE3;
+  border-radius: 2rem;
+  padding:1rem;
+  z-index: 10;
 }
 .game{
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   
+  z-index: 1;
+  width: 100%;
 
-  width: clamp(15rem, 100%, 30rem);
-  margin:auto;
   
+}
+.resetButton{
+  position: relative;
+  margin: auto;
+  margin-top: 1rem;
+  outline: none;
+  font-size: 1.5rem;
+  border-radius: 4px;
+  outline: none;
+  border: none;
+  padding: .5rem;
+  font-size: 2rem;
+  font-weight: 900;
+  background-color: rgb(66, 90, 71);
+  color:white;
+  box-shadow: 2px 2px 7px 2px #272523ad;
+  cursor: pointer;
+  
+  z-index: 5;
 }
 .litOverlay{
   display: flex;
@@ -54,9 +116,9 @@ body{
 }
 .boardSquare span{
   display: block;
-  font-size: 2.5em;
+  font-size: 3rem;
   text-shadow: 0 0 0 3px black;
-
+  color : white;
 
   cursor: pointer;
   -webkit-text-stroke-width: 1px;
@@ -70,4 +132,10 @@ body{
 }
 .oddSquare{
   background-color: rgb(74, 104, 85);
+}
+
+@media (max-width: 550px){
+  .boardSquare span{
+    font-size: clamp(0rem, 6vw, 3rem);
+  }
 }

@@ -98,18 +98,20 @@ function App() {
       <div aria-hidden="true" className="background"></div>
               <h1>Chess!</h1>
       <div className="gameWrapper">
-        <div className="game">
-          <GameBoard
-          litUpSquares={litUpSquares}
-          updateLitSquares={updateLitSquares}
-          activePiece={activePiece}
-          updateActivePiece={updateActivePiece}
-          boardState={boardState}
-          updateBoardState={updateBoardState}
-          />
-          </div>
+        <div className="panel">
+          <div className="game">
+            <GameBoard
+            litUpSquares={litUpSquares}
+            updateLitSquares={updateLitSquares}
+            activePiece={activePiece}
+            updateActivePiece={updateActivePiece}
+            boardState={boardState}
+            updateBoardState={updateBoardState}
+            />
+            </div>
+        </div>
         <div className="topShadow"></div>
-        <div className="bottomLightShadow"></div>
+        <div className="bottomShadow"></div>
         <div className="bottomHeavyShadow"></div>
       </div>
         <ResetBoard updateActivePiece={updateActivePiece} updateBoardState={updateBoardState} updateLitSquares={updateLitSquares}/>
