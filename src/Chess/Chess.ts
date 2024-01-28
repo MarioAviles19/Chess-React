@@ -39,7 +39,7 @@ export class ChessBoard{
 
     
     public ResetBoard(){
-        
+
         this.state = Create2DArray<Piece | null>(8,8);
 
         for (let i = 0; i < this.state.length; i++) {
@@ -299,7 +299,7 @@ abstract class LongDistanceMover extends Piece{
         
         let moves : Vector2[] = [];
         this.offsets.forEach((offset)=>{
-            let currentPos = this.position;
+            let currentPos = {x: this.position.x + offset.x, y: this.position.y + offset.y};
             let index = 0;
             while(CheckIfMoveIsOnBoard(currentPos) || index > 16){
 

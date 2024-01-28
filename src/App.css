@@ -80,6 +80,7 @@ body{
   
 }
 .resetButton{
+  display: block;
   position: relative;
   margin: auto;
   margin-top: 1rem;
