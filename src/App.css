@@ -14,7 +14,24 @@
   margin:auto;
   
 }
+.litOverlay{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top:0;
+  left:0;
+  width: 100%;
+  height: 100%;
+}
+.moveIndicator{
+  width: 1.5em;
+  aspect-ratio: 1/1;
+  border-radius: 99rem;
+  background-color: rgba(0, 0, 0, 0.175);
+}
 .boardSquare{
+  position: relative;
   width: 100%;
   aspect-ratio: 1/1;
   background-color: white;

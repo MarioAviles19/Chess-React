@@ -69,14 +69,14 @@ export class ChessBoard{
         this.state[7][1] = new Pawn(false, {x: 7, y:1});
 
         //White's back row
-        this.state[0][7] = new Rook  (false, {x: 0, y: 7});
-        this.state[1][7] = new Knight(false, {x: 1, y: 7});
-        this.state[2][7] = new Bishop(false, {x: 2, y: 7});
-        this.state[3][7] = new Queen (false, {x: 3, y: 7});
-        this.state[4][7] = new King  (false, {x: 4, y: 7});
-        this.state[5][7] = new Bishop(false, {x: 5, y: 7});
-        this.state[6][7] = new Knight(false, {x: 6, y: 7});
-        this.state[7][7] = new Rook  (false, {x: 7, y: 7});
+        this.state[0][7] = new Rook  (true, {x: 0, y: 7});
+        this.state[1][7] = new Knight(true, {x: 1, y: 7});
+        this.state[2][7] = new Bishop(true, {x: 2, y: 7});
+        this.state[3][7] = new Queen (true, {x: 3, y: 7});
+        this.state[4][7] = new King  (true, {x: 4, y: 7});
+        this.state[5][7] = new Bishop(true, {x: 5, y: 7});
+        this.state[6][7] = new Knight(true, {x: 6, y: 7});
+        this.state[7][7] = new Rook  (true, {x: 7, y: 7});
 
         //White's Front row
         this.state[0][6] = new Pawn(true, {x: 0, y: 6});
@@ -120,6 +120,8 @@ export class ChessBoard{
                 //Set the piece's position to the indicated
                 piece.position = posToMove;
                 this.state[posToMove.x][posToMove.y] = piece;
+                //set the piece's Has moved variable to true
+                piece.hasMoved = true;
             }
         }
 
@@ -131,6 +133,8 @@ export class ChessBoard{
             //Set the piece's position to the indicated
             piece.position = posToMove;
             this.state[posToMove.x][posToMove.y] = piece;
+            //set the piece's Has moved variable to true
+            piece.hasMoved = true;
 
         }
 
