@@ -96,7 +96,10 @@ function App() {
   return (
     <div className="App">
       <div aria-hidden="true" className="background"></div>
-              <h1>Chess!</h1>
+              <header>
+                <a className="backButton" href="https://marioaviles.com"><i aria-hidden="true" className='fas fa-chevron-left'></i>Back To Website</a>
+                <h1>Chess!</h1>
+              </header>
       <div className="gameWrapper">
         <div className="panel">
           <div className="game">
