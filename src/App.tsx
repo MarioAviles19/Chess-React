@@ -48,25 +48,36 @@ function BoardSquare(pos: Vector2, piece : Piece | null, litUpSquares : Array<Ve
     </div>
   )
 }
+function ResetBoard(props : {updateLitSquares : React.Dispatch<SetStateAction<Array<Vector2>>>, updateBoardState : React.Dispatch<SetStateAction<Array<Array<Piece | null>>>>, updateActivePiece : React.Dispatch<SetStateAction<Piece | null>>}){
 
-function GameBoard(){
+  function HandleClick(){
+    gameBoard.ResetBoard()
+    props.updateLitSquares([]);
+    props.updateBoardState(gameBoard.state);
+    props.updateActivePiece(null);
+  }
+
+  return (
+    <button onClick={HandleClick} className='resetButton'>Reset Board</button>
+  )
+}
+
+function GameBoard(props : {boardState : (Piece | null)[][], litUpSquares : Vector2[], activePiece : Piece | null, updateLitSquares : React.Dispatch<SetStateAction<Array<Vector2>>>, updateBoardState : React.Dispatch<SetStateAction<Array<Array<Piece | null>>>>, updateActivePiece : React.Dispatch<SetStateAction<Piece | null>>}){
 
 
 
   const squares = gameBoard.state
 
-  let [litUpSquares, updateLitSquares] = useState<Array<Vector2>>([]);
-  let [activePiece, updateActivePiece] = useState<Piece | null>(null);
-  let [boardState, updateBoardState] = useState(squares);
+
 
   return (
     <>
-      {boardState.map((val, x)=>{
+      {props.boardState.map((val, x)=>{
         return (
           <div key={x} className="column">{
           val.map((piece, y)=>{
             //TODO: Clean this up
-          return BoardSquare({x, y}, piece, litUpSquares, activePiece, updateLitSquares, updateBoardState, updateActivePiece)
+          return BoardSquare({x, y}, piece, props.litUpSquares, props.activePiece, props.updateLitSquares, props.updateBoardState, props.updateActivePiece)
         })}
         </div>
         )
@@ -78,14 +89,32 @@ function GameBoard(){
 }
 
 function App() {
-  
+  let [litUpSquares, updateLitSquares] = useState<Array<Vector2>>([]);
+  let [activePiece, updateActivePiece] = useState<Piece | null>(null);
+  let [boardState, updateBoardState] = useState(gameBoard.state);
 
   return (
     <div className="App">
-      <div className="game">
-        <GameBoard/>
-        </div>
+      <div aria-hidden="true" className="background"></div>
+              <h1>Chess!</h1>
+      <div className="gameWrapper">
+        <div className="game">
+          <GameBoard
+          litUpSquares={litUpSquares}
+          updateLitSquares={updateLitSquares}
+          activePiece={activePiece}
+          updateActivePiece={updateActivePiece}
+          boardState={boardState}
+          updateBoardState={updateBoardState}
+          />
+          </div>
+        <div className="topShadow"></div>
+        <div className="bottomLightShadow"></div>
+        <div className="bottomHeavyShadow"></div>
+      </div>
+        <ResetBoard updateActivePiece={updateActivePiece} updateBoardState={updateBoardState} updateLitSquares={updateLitSquares}/>
     </div>
+
   )
 }
 
