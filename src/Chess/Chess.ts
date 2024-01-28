@@ -39,7 +39,7 @@ export class ChessBoard{
 
     
     public ResetBoard(){
-
+        
         this.state = Create2DArray<Piece | null>(8,8);
 
         for (let i = 0; i < this.state.length; i++) {
