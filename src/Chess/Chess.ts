@@ -17,6 +17,12 @@ export let Pieces = {
     w_king   : 0b10100000,
 }
 
+export enum PlayMode{
+
+    freePlay,
+    randomEnemy
+}
+
 function Create2DArray<T>(xLen : number, yLen : number){
 
     let payload : Array<Array<T>> = new Array(xLen);
@@ -37,6 +43,12 @@ export class ChessBoard{
     //have that information
     public captures : Array<Piece> = [];
 
+    public turnNumber = 0;
+    public mode = PlayMode.randomEnemy;
+    pieces : Piece[] = [];
+
+    private wKing : King = new King(true, {x: 4, y: 7});
+    private bKing : King = new King(true, {x: 4, y: 0});;
     
     public ResetBoard(){
 
@@ -49,17 +61,22 @@ export class ChessBoard{
         //Manually map the starting positions
 
         //Black's back row
+
+        //The king is special;
+
+        this.bKing = new King  (true, {x: 4, y: 0});
+
         this.state[0][0] = new Rook  (false, {x: 0, y : 0});
         this.state[1][0] = new Knight(false, {x:1,y:0});
         this.state[2][0] = new Bishop(false, {x: 2, y: 0});
         this.state[3][0] = new Queen (false, {x: 3, y: 0});
-        this.state[4][0] = new King  (false, {x:4 , y:0});
+        this.state[4][0] = this.bKing
         this.state[5][0] = new Bishop(false, {x:5, y:0});
         this.state[6][0] = new Knight(false, {x: 6, y:0});
         this.state[7][0] = new Rook  (false, {x: 7, y:0});
 
         //Black's Front row
-        this.state[0][1] = new Pawn(false,  {x: 0, y : 1});
+        this.state[0][1] = new Pawn(false,  {x: 0, y:1});
         this.state[1][1] = new Pawn(false,{x:1,y:  1});
         this.state[2][1] = new Pawn(false,{x: 2, y: 1});
         this.state[3][1] = new Pawn(false, {x: 3, y: 1});
@@ -69,11 +86,16 @@ export class ChessBoard{
         this.state[7][1] = new Pawn(false, {x: 7, y:1});
 
         //White's back row
+        
+        //The king is special;
+
+        this.wKing = new King  (true, {x: 4, y: 7});
+
         this.state[0][7] = new Rook  (true, {x: 0, y: 7});
         this.state[1][7] = new Knight(true, {x: 1, y: 7});
         this.state[2][7] = new Bishop(true, {x: 2, y: 7});
         this.state[3][7] = new Queen (true, {x: 3, y: 7});
-        this.state[4][7] = new King  (true, {x: 4, y: 7});
+        this.state[4][7] = this.wKing
         this.state[5][7] = new Bishop(true, {x: 5, y: 7});
         this.state[6][7] = new Knight(true, {x: 6, y: 7});
         this.state[7][7] = new Rook  (true, {x: 7, y: 7});
@@ -87,6 +109,69 @@ export class ChessBoard{
         this.state[5][6] = new Pawn(true, {x: 5, y: 6});
         this.state[6][6] = new Pawn(true, {x: 6, y: 6});
         this.state[7][6] = new Pawn(true, {x: 7, y: 6});
+
+        //Load all pieces into piece array;
+        this.state.forEach(val=>{
+            val.forEach(piece=>{
+                if(piece instanceof Piece){
+                    this.pieces.push(piece);
+                }else{
+                }
+            })
+        })
+        //Set the kings to check for checks later
+        
+
+    }
+    private getRandomValueFromArray<T>(arr : T[]) {
+        const randomIndex = Math.floor(Math.random() * arr.length);
+        return arr[randomIndex];
+      }
+
+    private GetRandomMove( piecesLeftToCheck : Piece[]) : {piece: Piece, move : Vector2} | null{
+
+            if(piecesLeftToCheck.length <= 0){
+                return null;
+            }
+            const piece = this.getRandomValueFromArray<Piece>(piecesLeftToCheck);
+
+            //if piece is black
+            if(!piece.isWhite){
+                //If piece has moves
+                const moves = piece.GetLegalMoves(this);
+
+                if(moves.length > 0){
+                    //If there is a move, get a random one
+                    const move = this.getRandomValueFromArray<Vector2>(moves);
+                    return {piece, move}
+                }
+            } 
+            //Remove the piece from the pieces to check
+            const indexOfPiece = piecesLeftToCheck.indexOf(piece);
+            if(indexOfPiece !== -1){
+                piecesLeftToCheck.splice(indexOfPiece, 1)
+            }
+
+            return this.GetRandomMove(piecesLeftToCheck);
+
+
+    }
+
+    private CheckForChecks(){
+
+
+
+        this.pieces.forEach(piece=>{
+            
+            const moves = piece.GetLegalMoves(this);
+
+            if(moves.some(move=>{
+                return (move.x === this.bKing.position.x && move.y === this.bKing.position.y) || (move.x === this.wKing.position.x && move.y === this.wKing.position.y)
+            })){
+                return true;
+            }
+        })
+        return false
     }
 
     /**
@@ -97,13 +182,17 @@ export class ChessBoard{
      * @param posToMove The position to move to
      */
     public MovePiece(piece : Piece, posToMove : Vector2){
-
-        const squareToMoveTo = this.state[posToMove.x][posToMove.y];
-
+        
+        if((piece.isWhite && this.turnNumber % 2 !== 0) || (!piece.isWhite && this.turnNumber % 2 === 0)){
+            return;
+        }
         //Make sure the position to move is on the board, throw error if not
-        if(posToMove.x < 0 || posToMove.y < 0 || posToMove.x > 8 || posToMove.y > 8){
+        if(posToMove.x < 0 || posToMove.y < 0 || posToMove.x > 7 || posToMove.y > 7){
+            console.log(posToMove);
             throw new MoveOutsideBoundsError(piece, posToMove);
         }
+        const squareToMoveTo = this.state[posToMove.x][posToMove.y];
+
         if(squareToMoveTo){
             if(squareToMoveTo.isWhite === piece.isWhite){
                 //If the pieces are the same color, throw error
@@ -113,7 +202,14 @@ export class ChessBoard{
                 //Capture the piece
                 this.CapturePiece(squareToMoveTo)
 
+
                 //Move piece
+
+                //If the move is a pawn and it moved to the back row, promote to queen
+                if(piece instanceof Pawn && (posToMove.y === 7 || posToMove.y === 0)){
+                    piece = new Queen(piece.isWhite, piece.position);
+                }
+                
 
                 //Remove the piece from the current location
                 this.state[piece.position.x][piece.position.y] = null;
@@ -122,12 +218,17 @@ export class ChessBoard{
                 this.state[posToMove.x][posToMove.y] = piece;
                 //set the piece's Has moved variable to true
                 piece.hasMoved = true;
+                this.turnNumber ++;
             }
         }
-
+        //TODO: This can probably be reduced
         if(!this.state[posToMove.x][posToMove.y]){
             //If there is no piece already at the position to move, go ahead and move it
             
+            //If the move is a pawn and it moved to the back row, promote to queen
+            if(piece instanceof Pawn && (posToMove.y === 7 || posToMove.y === 0)){
+                piece = new Queen(piece.isWhite, piece.position);
+            }
             //Remove the piece from the current location
             this.state[piece.position.x][piece.position.y] = null;
             //Set the piece's position to the indicated
@@ -135,9 +236,23 @@ export class ChessBoard{
             this.state[posToMove.x][posToMove.y] = piece;
             //set the piece's Has moved variable to true
             piece.hasMoved = true;
+            this.turnNumber ++;
 
         }
 
+        //If the game is in randomEnemy mode and it's black's turn, make a random move
+
+        if(this.mode == PlayMode.randomEnemy && this.turnNumber % 2 !== 0){
+
+
+            const move = this.GetRandomMove([...this.pieces]);
+            //If there is no move, there must be no more black pieces
+            if(!move){
+                //END GAME
+                return;
+            }
+            this.MovePiece(move.piece, move.move);
+        }
 
 
     }
@@ -145,6 +260,11 @@ export class ChessBoard{
     private CapturePiece(pieceBeingCaptured : Piece){
 
         this.captures.push(pieceBeingCaptured);
+        //Remove piece from list of pieces
+        const indexOfPieceToCapture = this.pieces.indexOf(pieceBeingCaptured);
+        this.pieces.splice(indexOfPieceToCapture, 1);
+        console.log(pieceBeingCaptured)
+        console.log(indexOfPieceToCapture);
     }
 
     
@@ -184,7 +304,6 @@ export class ShortDistanceMover extends Piece{
 
     public GetLegalMoves(board : ChessBoard) : Array<Vector2>{
         //Get the specific positions that a knight can get
-        console.log(this.moveOffsets)
         let legalPositions = this.moveOffsets.map(offset=>{
             const result = {x: this.position.x + offset.x, y: this.position.y + offset.y};
 
@@ -251,8 +370,8 @@ export class Pawn extends Piece{
 
         //Get the theoretically next position
         const upPos = {x: this.position.x, y: this.position.y + (1 * (this.isWhite? -1 : 1))}
-        const upLeftSquare = board.state[upPos.x - 1][upPos.y];
-        const upRightSquare = board.state[upPos.x +1][upPos.y];
+        const upLeftSquare = board?.state[upPos.x - 1]?.[upPos.y];
+        const upRightSquare = board?.state[upPos.x +1]?.[upPos.y];
 
         let legalMoveList : Array<Vector2> = [];
         //Make sure the move is on the board
