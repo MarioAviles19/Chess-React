@@ -44,11 +44,21 @@ export class ChessBoard{
     public captures : Array<Piece> = [];
 
     public turnNumber = 0;
-    public mode = PlayMode.randomEnemy;
+    public mode = PlayMode.freePlay;
     pieces : Piece[] = [];
 
     private wKing : King = new King(true, {x: 4, y: 7});
     private bKing : King = new King(true, {x: 4, y: 0});;
+
+    constructor(board? : ChessBoard){
+        if(board){
+            this.turnNumber = board.turnNumber;
+            this.mode = board.mode;
+            this.pieces = [...board.pieces];
+            
+
+        }
+    }
     
     public ResetBoard(){
 
@@ -64,7 +74,7 @@ export class ChessBoard{
 
         //The king is special;
 
-        this.bKing = new King  (true, {x: 4, y: 0});
+        this.bKing = new King  (false, {x: 4, y: 0});
 
         this.state[0][0] = new Rook  (false, {x: 0, y : 0});
         this.state[1][0] = new Knight(false, {x:1,y:0});
@@ -174,6 +184,16 @@ export class ChessBoard{
         return false
     }
 
+    private PeekMove(piece : Piece, posToMove : Vector2){
+
+        //Create a copy of this chessboard I guess
+        const copyBoard = new ChessBoard();
+        //Copy the state
+        copyBoard.state = [...this.state];
+        //Copy the kings
+
+    }
+
     /**
      * @description This function ensures that
      * the move attempting to be made is allowed
@@ -182,6 +202,8 @@ export class ChessBoard{
      * @param posToMove The position to move to
      */
     public MovePiece(piece : Piece, posToMove : Vector2){
+
+        
         
         if((piece.isWhite && this.turnNumber % 2 !== 0) || (!piece.isWhite && this.turnNumber % 2 === 0)){
             return;
@@ -267,6 +289,8 @@ export class ChessBoard{
         console.log(indexOfPieceToCapture);
     }
 
+
+
     
 
 }
@@ -294,13 +318,18 @@ export abstract class Piece{
     public GetLegalMoves(board : ChessBoard) : Array<Vector2> {
         return [];
     }
-
+    abstract CreateNewInstance() : Piece;
+    public Copy(){
+        return this.CreateNewInstance()
+    }
 
 }
 
-export class ShortDistanceMover extends Piece{
+export abstract class ShortDistanceMover extends Piece{
 
     moveOffsets : Vector2[] = []
+
+    abstract CreateNewInstance(): Piece;
 
     public GetLegalMoves(board : ChessBoard) : Array<Vector2>{
         //Get the specific positions that a knight can get
@@ -357,7 +386,11 @@ export class Knight extends Piece{
 
         return trimmedLegalPositions;
     }
-
+    CreateNewInstance(): Piece {
+        let newPiece = new Knight(this.isWhite, this.position)
+        newPiece.hasMoved = this.hasMoved;
+        return newPiece;
+    }
 
 }
 
@@ -405,6 +438,11 @@ export class Pawn extends Piece{
 
         return legalMoveList
         
+    }
+    CreateNewInstance(): Piece {
+        let newPiece = new Pawn(this.isWhite, this.position)
+        newPiece.hasMoved = this.hasMoved;
+        return newPiece;
     }
 
 }
@@ -458,6 +496,11 @@ class Bishop extends LongDistanceMover{
         {x:-1, y:-1}
     ]
 
+    CreateNewInstance(): Piece {
+        let newPiece = new Bishop(this.isWhite, this.position)
+        newPiece.hasMoved = this.hasMoved;
+        return newPiece;
+    }
 
 }
 
@@ -471,6 +514,11 @@ class Rook extends LongDistanceMover{
         {x:-1, y:0}
     ]
 
+    CreateNewInstance(): Piece {
+        let newPiece = new Rook(this.isWhite, this.position)
+        newPiece.hasMoved = this.hasMoved;
+        return newPiece;
+    }
 
 }
 
@@ -487,6 +535,11 @@ class Queen extends LongDistanceMover{
         {x: 1, y:-1},
         {x:-1, y:-1}
     ]
+    CreateNewInstance(): Piece {
+        let newPiece = new Queen(this.isWhite, this.position)
+        newPiece.hasMoved = this.hasMoved;
+        return newPiece;
+    }
 }
 class King extends ShortDistanceMover{
     name = "king"
@@ -500,4 +553,9 @@ class King extends ShortDistanceMover{
         {x: 1, y:-1},
         {x:-1, y:-1}
     ]
+    CreateNewInstance(): Piece {
+        let newPiece = new King(this.isWhite, this.position)
+        newPiece.hasMoved = this.hasMoved;
+        return newPiece;
+    }
 }

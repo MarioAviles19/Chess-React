@@ -19,6 +19,8 @@ function BoardSquare(pos: Vector2, piece: Piece | null, litUpSquares: Array<Vect
 
     if (activePiece) {
       //If this is lit try to move the piece
+
+     
       if (shouldBeLit) {
 
         gameBoard.MovePiece(activePiece, pos)
