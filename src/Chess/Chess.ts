@@ -190,8 +190,16 @@ export class ChessBoard{
         const copyBoard = new ChessBoard();
         //Copy the state
         copyBoard.state = [...this.state];
+        copyBoard.state.forEach(val=>{
+            val.forEach(piece=>{
+                if(piece){
+                copyBoard.pieces.push(piece.Copy())
+                }
+            })
+        })
         //Copy the kings
-
+        copyBoard.bKing = this.bKing.Copy()
+        copyBoard.wKing = this.wKing.Copy();
     }
 
     /**
@@ -318,9 +326,9 @@ export abstract class Piece{
     public GetLegalMoves(board : ChessBoard) : Array<Vector2> {
         return [];
     }
-    abstract CreateNewInstance() : Piece;
-    public Copy(){
-        return this.CreateNewInstance()
+    abstract CreateNewInstance<T>() : T;
+    public Copy<T>(){
+        return this.CreateNewInstance<T>()
     }
 
 }
@@ -328,8 +336,6 @@ export abstract class Piece{
 export abstract class ShortDistanceMover extends Piece{
 
     moveOffsets : Vector2[] = []
-
-    abstract CreateNewInstance(): Piece;
 
     public GetLegalMoves(board : ChessBoard) : Array<Vector2>{
         //Get the specific positions that a knight can get
@@ -386,10 +392,10 @@ export class Knight extends Piece{
 
         return trimmedLegalPositions;
     }
-    CreateNewInstance(): Piece {
+    CreateNewInstance<T>(): T {
         let newPiece = new Knight(this.isWhite, this.position)
         newPiece.hasMoved = this.hasMoved;
-        return newPiece;
+        return newPiece as T;
     }
 
 }
@@ -439,10 +445,10 @@ export class Pawn extends Piece{
         return legalMoveList
         
     }
-    CreateNewInstance(): Piece {
+    CreateNewInstance<T>(): T {
         let newPiece = new Pawn(this.isWhite, this.position)
         newPiece.hasMoved = this.hasMoved;
-        return newPiece;
+        return newPiece as T;
     }
 
 }
@@ -496,10 +502,10 @@ class Bishop extends LongDistanceMover{
         {x:-1, y:-1}
     ]
 
-    CreateNewInstance(): Piece {
+    CreateNewInstance<T>(): T {
         let newPiece = new Bishop(this.isWhite, this.position)
         newPiece.hasMoved = this.hasMoved;
-        return newPiece;
+        return newPiece as T;
     }
 
 }
@@ -514,10 +520,10 @@ class Rook extends LongDistanceMover{
         {x:-1, y:0}
     ]
 
-    CreateNewInstance(): Piece {
+    CreateNewInstance<Rook>(): Rook {
         let newPiece = new Rook(this.isWhite, this.position)
         newPiece.hasMoved = this.hasMoved;
-        return newPiece;
+        return newPiece as Rook;
     }
 
 }
@@ -535,10 +541,10 @@ class Queen extends LongDistanceMover{
         {x: 1, y:-1},
         {x:-1, y:-1}
     ]
-    CreateNewInstance(): Piece {
+    CreateNewInstance<Queen>(): Queen {
         let newPiece = new Queen(this.isWhite, this.position)
         newPiece.hasMoved = this.hasMoved;
-        return newPiece;
+        return newPiece as Queen;
     }
 }
 class King extends ShortDistanceMover{
@@ -553,9 +559,9 @@ class King extends ShortDistanceMover{
         {x: 1, y:-1},
         {x:-1, y:-1}
     ]
-    CreateNewInstance(): Piece {
+    CreateNewInstance<King>(): King {
         let newPiece = new King(this.isWhite, this.position)
         newPiece.hasMoved = this.hasMoved;
-        return newPiece;
+        return newPiece as King;
     }
 }
