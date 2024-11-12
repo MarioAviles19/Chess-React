@@ -17,7 +17,7 @@ function BoardSquare(pos: Vector2, piece: Piece | null, litUpSquares: Array<Vect
   function HandleClick() {
     //If there is no active piece
 
-    console.log(gameBoard.inCheck);
+    console.log(gameBoard.check);
 
     if (activePiece) {
       //If this is lit try to move the piece
@@ -37,6 +37,7 @@ function BoardSquare(pos: Vector2, piece: Piece | null, litUpSquares: Array<Vect
     //If it is this piece's turn to move
     if((piece?.isWhite && gameBoard.turnNumber % 2 === 0) || (!piece?.isWhite && gameBoard.turnNumber % 2 === 1) || !piece){
       //Set the lit squares
+      console.log(piece);
       updateLitSquares(piece?.GetLegalMoves(gameBoard) || []);
       //Set the active piece
       updateActivePiece(piece)
@@ -127,7 +128,7 @@ function App() {
       <div aria-hidden="true" className="background"></div>
       <header>
         <a className="backButton" href="https://marioaviles.com"><i aria-hidden="true" className='fas fa-chevron-left'></i>Back To Website</a>
-        <h1>{gameBoard.inCheck? "Check!" : "Chess!"}</h1>
+        <h1>{gameBoard.check? "Check!" : "Chess!"}</h1>
         
       </header>
 

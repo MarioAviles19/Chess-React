@@ -37,13 +37,14 @@ function Create2DArray<T>(xLen : number, yLen : number){
 
 export class ChessBoard{ 
 
+    public isVirtual = false;
     //The state of the board 
     public state = Create2DArray<Piece| null>(8, 8);
     //An array representing the captured pieces. Not divided into white or black because the pieces themselves
     //have that information
     public captures : Array<Piece> = [];
 
-    public inCheck  = false;
+    public check : null | "white" | "black"  = null;
 
     public turnNumber = 0;
     public mode = PlayMode.freePlay;
@@ -64,6 +65,7 @@ export class ChessBoard{
     public ToFenString(){
         let str = "";
         //Loop over each 
+
         for (let i = 0; i < this.state.length; i++){
             let emptyCount = 0;
             //Add forward slash to beginning of each row, except the last
@@ -79,11 +81,15 @@ export class ChessBoard{
                     //if there is a square, first add the emptyCount to the string if above zero
                     if(emptyCount > 0){
                         str += emptyCount;
+                        emptyCount = 0;
                     }
                     //Then add the piece, capitalizing if white
-                    str += square.isWhite? square.fen.toUpperCase() : square.fen
+                    str += square.isWhite? square.fen.toUpperCase() : square.fen;
                 }
-                
+            }
+            if(emptyCount > 0){
+                str += emptyCount;
+                emptyCount = 0;
             }
         }
         return str
@@ -199,54 +205,43 @@ export class ChessBoard{
     private CheckForChecks(){
 
 
-        let isInCheck = false;
+        let inCheck = null;
         this.pieces.forEach(piece=>{
             
             const moves = piece.GetLegalMoves(this);
 
             if(moves.some(move=>{
-                // console.log((piece.isWhite? "white " : "black ") + piece.name)
-                // console.log(this.bKing.position)
-                // console.log(this.wKing.position)
-                // console.log(move);
                 console.log((move.x === this.bKing.position.x && move.y === this.bKing.position.y) || (move.x === this.wKing.position.x && move.y === this.wKing.position.y))
                 return (move.x === this.bKing.position.x && move.y === this.bKing.position.y) || (move.x === this.wKing.position.x && move.y === this.wKing.position.y);
 
 
             })){
-               isInCheck = true;
+               inCheck = piece.isWhite? "black" : "white";
             }
         })
-        return isInCheck;
+        return inCheck;
     }
-
-    private PeekMove(piece : Piece, posToMove : Vector2){
-
-        //Create a copy of this chessboard I guess
-        const copyBoard = new ChessBoard();
-        //Copy the state
-        copyBoard.state = [...this.state];
-        copyBoard.state.forEach(val=>{
-            val.forEach(piece=>{
-                if(piece){
-                copyBoard.pieces.push(piece.Copy())
+    /**
+     * @description This function makes a move, 
+     * gathers some information, and then rolls back the move
+     * 
+     * @param piece The piece to move
+     * @param posToMove The position to move to
+     * @returns {check: null | "white" | "black"}
+     */
+    public InCheckAfterMove(piece : Piece, posToMove : Vector2){
+        let myKing = piece.isWhite? this.wKing : this.bKing;
+        let legal = true;
+        for (let i = 0; i < this.pieces.length; i++){
+            if(this.pieces[i].isWhite != piece.isWhite){
+                let moves = this.pieces[i].GetLegalMoves(this);
+                if(moves.some(val=>{val.x === myKing.position.x && val.y === myKing.position.y})){
+                    legal = false;
+                    break;
                 }
-            })
-        })
-        //Copy the kings
-        copyBoard.bKing = this.bKing.Copy()
-        copyBoard.wKing = this.wKing.Copy();
-
-
-        //Make the move on the virtual board
-        const virtualPiece = copyBoard.state[piece.position.y][piece.position.x];
-
-        if(!virtualPiece){
-            throw new PieceDoesNotExistError(virtualPiece)
+            }
         }
-        
-        copyBoard.MovePiece(virtualPiece, posToMove, true)
-        return copyBoard
+        return legal;
     }
 
     /**
@@ -256,8 +251,9 @@ export class ChessBoard{
      * @param piece The piece to move
      * @param posToMove The position to move to
      */
-    public MovePiece(piece : Piece, posToMove : Vector2, virutalMove : Boolean = false){
+    public MovePiece(piece : Piece, posToMove : Vector2){
 
+        
         
         
         if((piece.isWhite && this.turnNumber % 2 !== 0) || (!piece.isWhite && this.turnNumber % 2 === 0)){
@@ -336,8 +332,9 @@ export class ChessBoard{
             this.MovePiece(move.piece, move.move);
         }
 
-        this.inCheck = this.CheckForChecks();
-        console.log(this.CheckForChecks());
+        this.check = this.CheckForChecks();
+        
+    
 
     }
 
@@ -350,6 +347,7 @@ export class ChessBoard{
         console.log(pieceBeingCaptured)
         console.log(indexOfPieceToCapture);
     }
+
 
 
 
@@ -378,7 +376,7 @@ export abstract class Piece{
         this.isWhite = isWhite
         this.position = initialPosition;
     }
-    public GetLegalMoves(board : ChessBoard) : Array<Vector2> {
+    public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2> {
         return [];
     }
     abstract CreateNewInstance<T>() : T;
@@ -392,7 +390,7 @@ export abstract class ShortDistanceMover extends Piece{
 
     moveOffsets : Vector2[] = []
 
-    public GetLegalMoves(board : ChessBoard) : Array<Vector2>{
+    public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2>{
         //Get the specific positions that a knight can get
         let legalPositions = this.moveOffsets.map(offset=>{
             const result = {x: this.position.x + offset.x, y: this.position.y + offset.y};
@@ -403,7 +401,6 @@ export abstract class ShortDistanceMover extends Piece{
             if(board.state[result.y][result.x] && board.state[result.y][result.x]?.isWhite === this.isWhite){
                 return undefined
             }
-
             return result
         })
         const trimmedLegalPositions  = legalPositions.filter((val): val is Vector2=>{return val !== undefined})
@@ -429,9 +426,8 @@ export class Knight extends Piece{
         {x: 1, y: -2},
     ]
 
-    public GetLegalMoves(board : ChessBoard) : Array<Vector2>{
+    public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2>{
         //Get the specific positions that a knight can get
-
         let legalPositions = this.moveOffsets.map(offset=>{
             const result = {x: this.position.x + offset.x, y: this.position.y + offset.y};
 
@@ -441,6 +437,7 @@ export class Knight extends Piece{
             if(board.state[result.y][result.x] && board.state[result.y][result.x]?.isWhite === this.isWhite){
                 return undefined
             }
+
 
             return result
         })
@@ -461,7 +458,7 @@ export class Pawn extends Piece{
     name = "pawn";
     fen = "p";
 
-    public GetLegalMoves(board : ChessBoard) : Array<Vector2> {
+    public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2> {
 
         //Get the theoretical next position
         const upPos = {x: this.position.x, y: this.position.y + (1 * (this.isWhite? -1 : 1))}
@@ -514,7 +511,7 @@ abstract class LongDistanceMover extends Piece{
     name = ""
     offsets : Vector2[] = []
 
-    public GetLegalMoves(board: ChessBoard): Vector2[] {
+    public GetLegalMoves(board: ChessBoard, opts? : {shallow? : boolean}): Vector2[] {
         
         let moves : Vector2[] = [];
         this.offsets.forEach((offset)=>{
@@ -534,9 +531,10 @@ abstract class LongDistanceMover extends Piece{
 
                     }
                 }
+                    moves.push(currentPos)
+                
                 
                 index++
-                moves.push(currentPos)
                 
                 currentPos = {x: this.position.x + (offset.x * index), y: this.position.y + (offset.y * index)}
 
