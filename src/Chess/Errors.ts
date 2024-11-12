@@ -21,3 +21,13 @@ export class AttemptToCaptureSameColorError extends Error{
         this.posToMove = posToMove
     }
 }
+
+export class PieceDoesNotExistError extends Error{
+    message = "Attempt to access piece which does not exist";
+    piece : Piece | undefined | null;
+    posToMove = {x: Number.NEGATIVE_INFINITY, y : Number.NEGATIVE_INFINITY}
+    constructor(piece : Piece){
+        super();
+        this.piece = piece;
+    }
+}

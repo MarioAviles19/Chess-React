@@ -1,4 +1,4 @@
-import { MoveOutsideBoundsError, AttemptToCaptureSameColorError } from "./Errors";
+import { MoveOutsideBoundsError, AttemptToCaptureSameColorError, PieceDoesNotExistError } from "./Errors";
 
 export let Pieces = {
 
@@ -35,13 +35,15 @@ function Create2DArray<T>(xLen : number, yLen : number){
 }
 
 
-export class ChessBoard{
+export class ChessBoard{ 
 
     //The state of the board 
     public state = Create2DArray<Piece| null>(8, 8);
     //An array representing the captured pieces. Not divided into white or black because the pieces themselves
     //have that information
     public captures : Array<Piece> = [];
+
+    public inCheck  = false;
 
     public turnNumber = 0;
     public mode = PlayMode.freePlay;
@@ -58,6 +60,33 @@ export class ChessBoard{
             
 
         }
+    }
+    public ToFenString(){
+        let str = "";
+        //Loop over each 
+        for (let i = 0; i < this.state.length; i++){
+            let emptyCount = 0;
+            //Add forward slash to beginning of each row, except the last
+            if(i > 0){
+                str += "/"
+            }
+            for (let j = 0; j < this.state[i].length; j++){
+                let square = this.state[i][j];
+                //If there is no square, increment the empty count
+                if(!square){
+                    emptyCount++;
+                } else{
+                    //if there is a square, first add the emptyCount to the string if above zero
+                    if(emptyCount > 0){
+                        str += emptyCount;
+                    }
+                    //Then add the piece, capitalizing if white
+                    str += square.isWhite? square.fen.toUpperCase() : square.fen
+                }
+                
+            }
+        }
+        return str
     }
     
     public ResetBoard(){
@@ -76,24 +105,24 @@ export class ChessBoard{
 
         this.bKing = new King  (false, {x: 4, y: 0});
 
-        this.state[0][0] = new Rook  (false, {x: 0, y : 0});
-        this.state[1][0] = new Knight(false, {x:1,y:0});
-        this.state[2][0] = new Bishop(false, {x: 2, y: 0});
-        this.state[3][0] = new Queen (false, {x: 3, y: 0});
-        this.state[4][0] = this.bKing
-        this.state[5][0] = new Bishop(false, {x:5, y:0});
-        this.state[6][0] = new Knight(false, {x: 6, y:0});
-        this.state[7][0] = new Rook  (false, {x: 7, y:0});
+        this.state[0][0] = new Rook  (false, {x: 0, y: 0});
+        this.state[0][1] = new Knight(false, {x: 1, y: 0});
+        this.state[0][2] = new Bishop(false, {x: 2, y: 0});
+        this.state[0][3] = new Queen (false, {x: 3, y: 0});
+        this.state[0][4] = this.bKing
+        this.state[0][5] = new Bishop(false, {x: 5, y: 0});
+        this.state[0][6] = new Knight(false, {x: 6, y: 0});
+        this.state[0][7] = new Rook  (false, {x: 7, y: 0});
 
         //Black's Front row
-        this.state[0][1] = new Pawn(false,  {x: 0, y:1});
-        this.state[1][1] = new Pawn(false,{x:1,y:  1});
-        this.state[2][1] = new Pawn(false,{x: 2, y: 1});
-        this.state[3][1] = new Pawn(false, {x: 3, y: 1});
-        this.state[4][1] = new Pawn(false, {x:4 , y:1});
-        this.state[5][1] = new Pawn(false, {x:5, y:1});
-        this.state[6][1] = new Pawn(false, {x: 6, y:1});
-        this.state[7][1] = new Pawn(false, {x: 7, y:1});
+        this.state[1][0] = new Pawn(false, {x: 0, y: 1});
+        this.state[1][1] = new Pawn(false, {x: 1, y: 1});
+        this.state[1][2] = new Pawn(false, {x: 2, y: 1});
+        this.state[1][3] = new Pawn(false, {x: 3, y: 1});
+        this.state[1][4] = new Pawn(false, {x: 4, y: 1});
+        this.state[1][5] = new Pawn(false, {x: 5, y: 1});
+        this.state[1][6] = new Pawn(false, {x: 6, y: 1});
+        this.state[1][7] = new Pawn(false, {x: 7, y: 1});
 
         //White's back row
         
@@ -101,24 +130,24 @@ export class ChessBoard{
 
         this.wKing = new King  (true, {x: 4, y: 7});
 
-        this.state[0][7] = new Rook  (true, {x: 0, y: 7});
-        this.state[1][7] = new Knight(true, {x: 1, y: 7});
-        this.state[2][7] = new Bishop(true, {x: 2, y: 7});
-        this.state[3][7] = new Queen (true, {x: 3, y: 7});
-        this.state[4][7] = this.wKing
-        this.state[5][7] = new Bishop(true, {x: 5, y: 7});
-        this.state[6][7] = new Knight(true, {x: 6, y: 7});
+        this.state[7][0] = new Rook  (true, {x: 0, y: 7});
+        this.state[7][1] = new Knight(true, {x: 1, y: 7});
+        this.state[7][2] = new Bishop(true, {x: 2, y: 7});
+        this.state[7][3] = new Queen (true, {x: 3, y: 7});
+        this.state[7][4] = this.wKing
+        this.state[7][5] = new Bishop(true, {x: 5, y: 7});
+        this.state[7][6] = new Knight(true, {x: 6, y: 7});
         this.state[7][7] = new Rook  (true, {x: 7, y: 7});
 
         //White's Front row
-        this.state[0][6] = new Pawn(true, {x: 0, y: 6});
-        this.state[1][6] = new Pawn(true, {x: 1, y: 6});
-        this.state[2][6] = new Pawn(true, {x: 2, y: 6});
-        this.state[3][6] = new Pawn(true, {x: 3, y: 6});
-        this.state[4][6] = new Pawn(true, {x: 4, y: 6});
-        this.state[5][6] = new Pawn(true, {x: 5, y: 6});
+        this.state[6][0] = new Pawn(true, {x: 0, y: 6});
+        this.state[6][1] = new Pawn(true, {x: 1, y: 6});
+        this.state[6][2] = new Pawn(true, {x: 2, y: 6});
+        this.state[6][3] = new Pawn(true, {x: 3, y: 6});
+        this.state[6][4] = new Pawn(true, {x: 4, y: 6});
+        this.state[6][5] = new Pawn(true, {x: 5, y: 6});
         this.state[6][6] = new Pawn(true, {x: 6, y: 6});
-        this.state[7][6] = new Pawn(true, {x: 7, y: 6});
+        this.state[6][7] = new Pawn(true, {x: 7, y: 6});
 
         //Load all pieces into piece array;
         this.state.forEach(val=>{
@@ -170,18 +199,25 @@ export class ChessBoard{
     private CheckForChecks(){
 
 
-
+        let isInCheck = false;
         this.pieces.forEach(piece=>{
             
             const moves = piece.GetLegalMoves(this);
 
             if(moves.some(move=>{
-                return (move.x === this.bKing.position.x && move.y === this.bKing.position.y) || (move.x === this.wKing.position.x && move.y === this.wKing.position.y)
+                // console.log((piece.isWhite? "white " : "black ") + piece.name)
+                // console.log(this.bKing.position)
+                // console.log(this.wKing.position)
+                // console.log(move);
+                console.log((move.x === this.bKing.position.x && move.y === this.bKing.position.y) || (move.x === this.wKing.position.x && move.y === this.wKing.position.y))
+                return (move.x === this.bKing.position.x && move.y === this.bKing.position.y) || (move.x === this.wKing.position.x && move.y === this.wKing.position.y);
+
+
             })){
-                return true;
+               isInCheck = true;
             }
         })
-        return false
+        return isInCheck;
     }
 
     private PeekMove(piece : Piece, posToMove : Vector2){
@@ -200,6 +236,17 @@ export class ChessBoard{
         //Copy the kings
         copyBoard.bKing = this.bKing.Copy()
         copyBoard.wKing = this.wKing.Copy();
+
+
+        //Make the move on the virtual board
+        const virtualPiece = copyBoard.state[piece.position.y][piece.position.x];
+
+        if(!virtualPiece){
+            throw new PieceDoesNotExistError(virtualPiece)
+        }
+        
+        copyBoard.MovePiece(virtualPiece, posToMove, true)
+        return copyBoard
     }
 
     /**
@@ -209,19 +256,24 @@ export class ChessBoard{
      * @param piece The piece to move
      * @param posToMove The position to move to
      */
-    public MovePiece(piece : Piece, posToMove : Vector2){
+    public MovePiece(piece : Piece, posToMove : Vector2, virutalMove : Boolean = false){
 
         
         
         if((piece.isWhite && this.turnNumber % 2 !== 0) || (!piece.isWhite && this.turnNumber % 2 === 0)){
+            //Make sure that pieces can only move on their turn
             return;
         }
+
+
+
+
         //Make sure the position to move is on the board, throw error if not
         if(posToMove.x < 0 || posToMove.y < 0 || posToMove.x > 7 || posToMove.y > 7){
             console.log(posToMove);
             throw new MoveOutsideBoundsError(piece, posToMove);
         }
-        const squareToMoveTo = this.state[posToMove.x][posToMove.y];
+        const squareToMoveTo = this.state[posToMove.y][posToMove.x];
 
         if(squareToMoveTo){
             if(squareToMoveTo.isWhite === piece.isWhite){
@@ -242,17 +294,17 @@ export class ChessBoard{
                 
 
                 //Remove the piece from the current location
-                this.state[piece.position.x][piece.position.y] = null;
+                this.state[piece.position.y][piece.position.x] = null;
                 //Set the piece's position to the indicated
                 piece.position = posToMove;
-                this.state[posToMove.x][posToMove.y] = piece;
+                this.state[posToMove.y][posToMove.x] = piece;
                 //set the piece's Has moved variable to true
                 piece.hasMoved = true;
                 this.turnNumber ++;
             }
         }
         //TODO: This can probably be reduced
-        if(!this.state[posToMove.x][posToMove.y]){
+        if(!this.state[posToMove.y][posToMove.x]){
             //If there is no piece already at the position to move, go ahead and move it
             
             //If the move is a pawn and it moved to the back row, promote to queen
@@ -260,10 +312,10 @@ export class ChessBoard{
                 piece = new Queen(piece.isWhite, piece.position);
             }
             //Remove the piece from the current location
-            this.state[piece.position.x][piece.position.y] = null;
+            this.state[piece.position.y][piece.position.x] = null;
             //Set the piece's position to the indicated
             piece.position = posToMove;
-            this.state[posToMove.x][posToMove.y] = piece;
+            this.state[posToMove.y][posToMove.x] = piece;
             //set the piece's Has moved variable to true
             piece.hasMoved = true;
             this.turnNumber ++;
@@ -284,6 +336,8 @@ export class ChessBoard{
             this.MovePiece(move.piece, move.move);
         }
 
+        this.inCheck = this.CheckForChecks();
+        console.log(this.CheckForChecks());
 
     }
 
@@ -316,7 +370,8 @@ export abstract class Piece{
     //moveOffsets : Array<Vector2> = [];
     isWhite = false;
     hasMoved = false;
-    name    = "";
+    name = "";
+    fen = "";
     position : Vector2 = {x: 0, y:0}
 
     constructor(isWhite : boolean, initialPosition : Vector2){
@@ -345,7 +400,7 @@ export abstract class ShortDistanceMover extends Piece{
             if(!CheckIfMoveIsOnBoard(result)){
                 return undefined;
             }
-            if(board.state[result.x][result.y] && board.state[result.x][result.y]?.isWhite === this.isWhite){
+            if(board.state[result.y][result.x] && board.state[result.y][result.x]?.isWhite === this.isWhite){
                 return undefined
             }
 
@@ -362,6 +417,7 @@ export abstract class ShortDistanceMover extends Piece{
 export class Knight extends Piece{
     //Name for easy use in class names
     name = "knight"
+    fen = "n"
     moveOffsets = [
         {x: -2, y: 1}, 
         {x: -2, y: -1}, 
@@ -382,7 +438,7 @@ export class Knight extends Piece{
             if(!CheckIfMoveIsOnBoard(result)){
                 return undefined;
             }
-            if(board.state[result.x][result.y] && board.state[result.x][result.y]?.isWhite === this.isWhite){
+            if(board.state[result.y][result.x] && board.state[result.y][result.x]?.isWhite === this.isWhite){
                 return undefined
             }
 
@@ -403,14 +459,14 @@ export class Knight extends Piece{
 export class Pawn extends Piece{
 
     name = "pawn";
-
+    fen = "p";
 
     public GetLegalMoves(board : ChessBoard) : Array<Vector2> {
 
-        //Get the theoretically next position
+        //Get the theoretical next position
         const upPos = {x: this.position.x, y: this.position.y + (1 * (this.isWhite? -1 : 1))}
-        const upLeftSquare = board?.state[upPos.x - 1]?.[upPos.y];
-        const upRightSquare = board?.state[upPos.x +1]?.[upPos.y];
+        const upLeftSquare = board?.state[upPos.y]?.[upPos.x - 1];
+        const upRightSquare = board?.state[upPos.y]?.[upPos.x + 1];
 
         let legalMoveList : Array<Vector2> = [];
         //Make sure the move is on the board
@@ -418,11 +474,11 @@ export class Pawn extends Piece{
             return [];
         }
         //If there isn't a piece in front of the pawn, add it to the list
-        if(!board.state[upPos.x][upPos.y]){
+        if(!board.state[upPos.y][upPos.x]){
             legalMoveList.push({x: upPos.x, y: upPos.y})
 
             //Handle being able to move two spaces if this piece haven't moved yet
-            if(!this.hasMoved && !board.state[upPos.x][upPos.y + (1 * (this.isWhite? -1 : 1))]){
+            if(!this.hasMoved && !board.state[upPos.y + (1 * (this.isWhite? -1 : 1))][upPos.x]){
                 legalMoveList.push({x: upPos.x, y: upPos.y + (1 * (this.isWhite? -1 : 1))});
             }
         }
@@ -466,7 +522,7 @@ abstract class LongDistanceMover extends Piece{
             let index = 0;
             while(CheckIfMoveIsOnBoard(currentPos) || index > 16){
 
-                const square = board.state[currentPos.x][currentPos.y]
+                const square = board.state[currentPos.y][currentPos.x]
 
                 if(square){
                     if(square.isWhite !== this.isWhite){
@@ -495,6 +551,7 @@ abstract class LongDistanceMover extends Piece{
 
 class Bishop extends LongDistanceMover{
     name = "bishop"
+    fen = "b"
     offsets = [
         {x: 1, y: 1},
         {x: -1, y:1},
@@ -513,6 +570,7 @@ class Bishop extends LongDistanceMover{
 class Rook extends LongDistanceMover{
 
     name = "rook"
+    fen = "r";
     offsets: Vector2[] = [
         {x:0, y:1},
         {x:0, y:-1},
@@ -531,6 +589,7 @@ class Rook extends LongDistanceMover{
 class Queen extends LongDistanceMover{
 
     name = "queen"
+    fen = "q"
     offsets: Vector2[] = [
         {x:0, y:1},
         {x:0, y:-1},
@@ -549,6 +608,7 @@ class Queen extends LongDistanceMover{
 }
 class King extends ShortDistanceMover{
     name = "king"
+    fen = "k"
     moveOffsets: Vector2[] = [
         {x:0, y:1},
         {x:0, y:-1},
