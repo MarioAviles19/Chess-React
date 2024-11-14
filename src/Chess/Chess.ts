@@ -1,22 +1,5 @@
 import { MoveOutsideBoundsError, AttemptToCaptureSameColorError, PieceDoesNotExistError } from "./Errors";
 
-export let Pieces = {
-
-    b_pawn   : 0b00000001,
-    b_knight : 0b00000010,
-    b_bishop : 0b00000100,
-    b_rook   : 0b00001000,
-    b_queen  : 0b00010000,
-    b_king   : 0b00100000,
-
-    w_pawn   : 0b10000001,
-    w_knight : 0b10000010,
-    w_bishop : 0b10000100,
-    w_rook   : 0b10001000,
-    w_queen  : 0b10010000,
-    w_king   : 0b10100000,
-}
-
 export enum PlayMode{
 
     freePlay,
@@ -38,15 +21,16 @@ function Create2DArray<T>(xLen : number, yLen : number){
 export class ChessBoard{ 
 
     public isVirtual = false;
+
     //The state of the board 
     public state = Create2DArray<Piece| null>(8, 8);
-    //An array representing the captured pieces. Not divided into white or black because the pieces themselves
-    //have that information
+    //An array representing the captured pieces.
     public captures : Array<Piece> = [];
 
     public check : null | "white" | "black"  = null;
 
     public turnNumber = 0;
+    public moveLog : Array<{piece : Piece, from : Vector2, to: Vector2, capturedPiece : Piece | null}> = [];
     public mode = PlayMode.freePlay;
     pieces : Piece[] = [];
 
@@ -223,24 +207,19 @@ export class ChessBoard{
     }
     /**
      * @description This function makes a move, 
-     * gathers some information, and then rolls back the move
+     * checks whether the current player is still in check, and returns that
      * 
      * @param piece The piece to move
      * @param posToMove The position to move to
-     * @returns {check: null | "white" | "black"}
      */
     public InCheckAfterMove(piece : Piece, posToMove : Vector2){
-        let myKing = piece.isWhite? this.wKing : this.bKing;
         let legal = true;
-        for (let i = 0; i < this.pieces.length; i++){
-            if(this.pieces[i].isWhite != piece.isWhite){
-                let moves = this.pieces[i].GetLegalMoves(this);
-                if(moves.some(val=>{val.x === myKing.position.x && val.y === myKing.position.y})){
-                    legal = false;
-                    break;
-                }
-            }
+
+        this.MovePiece(piece, posToMove)
+        if(this.check === (piece.isWhite? "white" : "black")){
+            legal = false;
         }
+        this.RevertMove();
         return legal;
     }
 
@@ -271,6 +250,7 @@ export class ChessBoard{
         }
         const squareToMoveTo = this.state[posToMove.y][posToMove.x];
 
+        //Is there a piece already at that square?
         if(squareToMoveTo){
             if(squareToMoveTo.isWhite === piece.isWhite){
                 //If the pieces are the same color, throw error
@@ -279,44 +259,25 @@ export class ChessBoard{
             else{
                 //Capture the piece
                 this.CapturePiece(squareToMoveTo)
-
-
-                //Move piece
-
-                //If the move is a pawn and it moved to the back row, promote to queen
-                if(piece instanceof Pawn && (posToMove.y === 7 || posToMove.y === 0)){
-                    piece = new Queen(piece.isWhite, piece.position);
-                }
-                
-
-                //Remove the piece from the current location
-                this.state[piece.position.y][piece.position.x] = null;
-                //Set the piece's position to the indicated
-                piece.position = posToMove;
-                this.state[posToMove.y][posToMove.x] = piece;
-                //set the piece's Has moved variable to true
-                piece.hasMoved = true;
-                this.turnNumber ++;
             }
         }
-        //TODO: This can probably be reduced
-        if(!this.state[posToMove.y][posToMove.x]){
-            //If there is no piece already at the position to move, go ahead and move it
-            
-            //If the move is a pawn and it moved to the back row, promote to queen
-            if(piece instanceof Pawn && (posToMove.y === 7 || posToMove.y === 0)){
-                piece = new Queen(piece.isWhite, piece.position);
-            }
-            //Remove the piece from the current location
-            this.state[piece.position.y][piece.position.x] = null;
-            //Set the piece's position to the indicated
-            piece.position = posToMove;
-            this.state[posToMove.y][posToMove.x] = piece;
-            //set the piece's Has moved variable to true
-            piece.hasMoved = true;
-            this.turnNumber ++;
+        //Move piece
 
+        //If the move is a pawn and it moved to the back row, promote to queen
+        if(piece instanceof Pawn && (posToMove.y === 7 || posToMove.y === 0)){
+            piece = new Queen(piece.isWhite, piece.position);
         }
+        
+        this.moveLog.push({piece, from : piece.position, to: posToMove, capturedPiece : squareToMoveTo})
+
+        //Remove the piece from the current location
+        this.state[piece.position.y][piece.position.x] = null;
+        //Set the piece's position to the indicated
+        piece.position = posToMove;
+        this.state[posToMove.y][posToMove.x] = piece;
+        //set the piece's Has moved variable to true
+        piece.hasMoved = true;
+        this.turnNumber ++;
 
         //If the game is in randomEnemy mode and it's black's turn, make a random move
 
@@ -343,9 +304,59 @@ export class ChessBoard{
         this.captures.push(pieceBeingCaptured);
         //Remove piece from list of pieces
         const indexOfPieceToCapture = this.pieces.indexOf(pieceBeingCaptured);
-        this.pieces.splice(indexOfPieceToCapture, 1);
-        console.log(pieceBeingCaptured)
-        console.log(indexOfPieceToCapture);
+        if(indexOfPieceToCapture !== -1){
+            this.pieces.splice(indexOfPieceToCapture, 1);
+        }
+    }
+    private UnCapturePiece(piece : Piece){
+        
+        this.pieces.push(piece);
+        //Remove piece from list of captured pieces
+        const indexOfPiece = this.captures.indexOf(piece);
+        if(indexOfPiece !== -1){
+        this.captures.splice(indexOfPiece, 1);
+        }
+    }
+    private RevertMove(){
+        const moveToRevert = this.moveLog.pop();
+
+        if(!moveToRevert){
+            return;
+        }
+
+        //Move piece back to original Square
+
+        //Remove the piece from the current location
+        this.state[moveToRevert.from.y][moveToRevert.from.x] = moveToRevert.piece;
+        //Set the piece's position to the indicated
+        moveToRevert.piece.position = moveToRevert.from;
+
+        if(!moveToRevert.capturedPiece){
+            //If no piece was captured, just set the square to null
+            this.state[moveToRevert.to.y][moveToRevert.to.x] = null;
+        } else{
+            //Otherwise, set the square to the previously captured piece
+            this.UnCapturePiece(moveToRevert.capturedPiece)
+            this.state[moveToRevert.to.y][moveToRevert.to.x] = moveToRevert.capturedPiece;
+
+        }
+        this.turnNumber --;
+
+        //If the game is in randomEnemy mode and it's black's turn, make a random move
+
+        if(this.mode == PlayMode.randomEnemy && this.turnNumber % 2 !== 0){
+
+
+            const move = this.GetRandomMove([...this.pieces]);
+            //If there is no move, there must be no more black pieces
+            if(!move){
+                //END GAME
+                return;
+            }
+            this.MovePiece(move.piece, move.move);
+        }
+
+        this.check = this.CheckForChecks();
     }
 
 
@@ -365,7 +376,7 @@ function CheckIfMoveIsOnBoard(move : Vector2){
 
 export abstract class Piece{
 
-    //moveOffsets : Array<Vector2> = [];
+    id : Symbol;
     isWhite = false;
     hasMoved = false;
     name = "";
@@ -375,6 +386,7 @@ export abstract class Piece{
     constructor(isWhite : boolean, initialPosition : Vector2){
         this.isWhite = isWhite
         this.position = initialPosition;
+        this.id = Symbol();
     }
     public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2> {
         return [];
@@ -389,9 +401,15 @@ export abstract class Piece{
 export abstract class ShortDistanceMover extends Piece{
 
     moveOffsets : Vector2[] = []
+    cache : {key: number, moves : Vector2[]} = {key : 0, moves :  []}
 
     public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2>{
         //Get the specific positions that a knight can get
+
+        //If the move hasn't changed, just get the moves from cache
+        if(this.cache.key === board.turnNumber){
+            return this.cache.moves
+        }
         let legalPositions = this.moveOffsets.map(offset=>{
             const result = {x: this.position.x + offset.x, y: this.position.y + offset.y};
 
@@ -405,6 +423,8 @@ export abstract class ShortDistanceMover extends Piece{
         })
         const trimmedLegalPositions  = legalPositions.filter((val): val is Vector2=>{return val !== undefined})
 
+        this.cache.key = board.turnNumber;
+        this.cache.moves = trimmedLegalPositions;
         return trimmedLegalPositions;
     }
 
@@ -412,6 +432,9 @@ export abstract class ShortDistanceMover extends Piece{
 }
 
 export class Knight extends Piece{
+
+
+    cache : {key: number, moves : Vector2[]} = {key : 0, moves :  []}
     //Name for easy use in class names
     name = "knight"
     fen = "n"
@@ -427,6 +450,11 @@ export class Knight extends Piece{
     ]
 
     public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2>{
+
+        //If the move hasn't changed, just get the moves from cache
+        if(this.cache.key === board.turnNumber){
+            return this.cache.moves
+        }
         //Get the specific positions that a knight can get
         let legalPositions = this.moveOffsets.map(offset=>{
             const result = {x: this.position.x + offset.x, y: this.position.y + offset.y};
@@ -443,6 +471,8 @@ export class Knight extends Piece{
         })
         const trimmedLegalPositions  = legalPositions.filter((val): val is Vector2=>{return val !== undefined})
 
+        this.cache.key = board.turnNumber;
+        this.cache.moves = trimmedLegalPositions;
         return trimmedLegalPositions;
     }
     CreateNewInstance<T>(): T {
@@ -455,11 +485,16 @@ export class Knight extends Piece{
 
 export class Pawn extends Piece{
 
+    cache : {key: number, moves : Vector2[]} = {key : 0, moves :  []}
     name = "pawn";
     fen = "p";
 
     public GetLegalMoves(board : ChessBoard, opts? : {shallow? : boolean}) : Array<Vector2> {
 
+        //If the move hasn't changed, just get the moves from cache
+        if(this.cache.key === board.turnNumber){
+            return this.cache.moves
+        }
         //Get the theoretical next position
         const upPos = {x: this.position.x, y: this.position.y + (1 * (this.isWhite? -1 : 1))}
         const upLeftSquare = board?.state[upPos.y]?.[upPos.x - 1];
@@ -494,7 +529,8 @@ export class Pawn extends Piece{
         }
         //TODO: deal with enpassant 
 
-
+        this.cache.key = board.turnNumber;
+        this.cache.moves = legalMoveList;
         return legalMoveList
         
     }
@@ -508,11 +544,15 @@ export class Pawn extends Piece{
 
 abstract class LongDistanceMover extends Piece{
 
+    cache : {key: number, moves : Vector2[]} = {key : 0, moves :  []}
     name = ""
     offsets : Vector2[] = []
 
     public GetLegalMoves(board: ChessBoard, opts? : {shallow? : boolean}): Vector2[] {
-        
+        //If the move hasn't changed, just get the moves from cache
+        if(this.cache.key === board.turnNumber){
+            return this.cache.moves
+        }
         let moves : Vector2[] = [];
         this.offsets.forEach((offset)=>{
             let currentPos = {x: this.position.x + offset.x, y: this.position.y + offset.y};
@@ -542,6 +582,8 @@ abstract class LongDistanceMover extends Piece{
             }
 
         })
+        this.cache.key = board.turnNumber;
+        this.cache.moves = moves;
         return moves;
     }
 
