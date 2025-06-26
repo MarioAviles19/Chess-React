@@ -158,6 +158,9 @@ export class ChessBoard{
                 if(Piece.IsSlidingPiece(piece)){
                     moves.push(...this.GenerateSlidingMoves(i, piece))
                 }
+                else if(Piece.IsPiece(piece, Piece.Knight)){
+                    moves.push(...this.GenerateKnightMoves(i))
+                }
             }
         })
         return moves
@@ -198,7 +201,54 @@ export class ChessBoard{
     }
 
     private GenerateKnightMoves(startSquare : number){
+        let moves : Move[] = []
         //how the heck
+
+
+        //Offsets arranged from west to east
+        const offsets = [-10, 6, -17, 15, -15, 17, -6, 10 ]
+
+        const distanceToWestEdge = this.numSquaresToEdge[startSquare][2]
+        const distanceToEastEdge = this.numSquaresToEdge[startSquare][3]
+    
+        let startIndex = 0;
+        let endIndex = 8;
+
+        //Exclude offsets that would wrap around the board
+        if(distanceToEastEdge <= 2){
+            endIndex -= (distanceToEastEdge + 1) * 2
+        }
+
+        if(distanceToWestEdge <= 2){
+            startIndex += (distanceToWestEdge + 1) * 2
+        }
+        console.log(startIndex)
+        //Change to for loop which cuts off the furthest left or right moves if the number of squares to the edge is too big
+        for(let i = startIndex; i < endIndex; i++){
+            const targetSquare = startSquare + offsets[i]
+            const pieceOnSquare = this.squares[targetSquare]
+
+
+        
+
+            if(targetSquare > 63 || targetSquare < 0){
+                //TODO: Also prevent wrapping
+
+                //if the move is off the board, skip
+                continue
+            }
+            if(Piece.IsColor(pieceOnSquare, this.friendlyColor)){
+                //If the target has a friendly piece on it, skip
+                continue
+            }
+
+            moves.push({startSquare, targetSquare})
+
+
+        }
+
+        return moves
+
     }
     private GeneratePawnMoves(startingSquare : number){
 
