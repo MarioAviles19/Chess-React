@@ -200,6 +200,12 @@ export class ChessBoard{
     private GenerateKnightMoves(startSquare : number){
         //how the heck
     }
+    private GeneratePawnMoves(startingSquare : number){
+
+    }
+    private GenerateKingMoves(startingSquare : number){
+
+    }
 
 }
 
@@ -210,7 +216,7 @@ export class Piece{
     static Bishop = 3;
     static Rook = 4;
     static King = 5;
-    static Queen = 5;
+    static Queen = 6;
 
     static White = 8;
     static Black = 16
