@@ -6,15 +6,9 @@ export enum PlayMode{
     randomEnemy
 }
 
-function Create2DArray<T>(xLen : number, yLen : number){
-
-    let payload : Array<Array<T>> = new Array(xLen);
-
-    for (let i = 0; i < xLen; i++) {
-        payload[i] = new Array(yLen);
-        
-    }
-    return payload;
+type Move = {
+    startSquare : number,
+    targetSquare : number
 }
 
 export class ChessBoard{ 
@@ -23,11 +17,14 @@ export class ChessBoard{
     numSquaresToEdge : Array<any>  = []
 
     public turnNumber : number = 1;
+    public colorToMove : number = Piece.White;
+
+    public moves : Move[] = [];
     private friendlyColor = Piece.White;
     private opponentColor = Piece.Black;
 
     private startingPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-    private directionOffsets = [-8, 8, -1, 1, -9, 9, -7, 7,]
+    private directionOffsets = [-8, 8, -1, 1, -9, -7, 9, 7,]
 
     
 
@@ -39,6 +36,7 @@ export class ChessBoard{
             this.LoadFromFen(fen);
         }
         this.PrecomputedMoveData();
+        this.moves = this.GenerateMoves();
     }
 
     private AdvanceTurn(){
@@ -126,8 +124,8 @@ export class ChessBoard{
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
                 
-                const north = 7 - rank;
-                const south = rank;
+                const south = 7 - rank;
+                const north = rank;
                 const west = file;
                 const east = 7 - file;
 
@@ -147,48 +145,64 @@ export class ChessBoard{
                 
             } 
         }
+        console.log(this.numSquaresToEdge)
     }
 
 
-    public GenerateMoves(squareIndex : number){
+    public GenerateMoves(){
 
-        const moves : {startingSquare : number, endingSquare : number}[] = [];
+        let moves : Move[] = [];
 
-        this.squares.forEach((val, i)=>{
-
+        this.squares.forEach((piece, i)=>{
+            if(Piece.IsColor(piece, this.colorToMove)){
+                if(Piece.IsSlidingPiece(piece)){
+                    moves.push(...this.GenerateSlidingMoves(i, piece))
+                }
+            }
         })
+        return moves
     }
 
-    private GenerateSlidingMoves(startingSquare : number, piece : number){
+    private GenerateSlidingMoves(startSquare : number, piece : number){
 
-        const moves : {startingSquare : number, endingSquare : number}[] = [];
+        const moves : Move[] = [];
 
-
+        const startDirIndex = Piece.IsPiece(piece, Piece.Bishop) ? 4 : 0;
+        const endDirIndex = Piece.IsPiece(piece, Piece.Rook) ? 4 : 8;
 
         //Loop over each direction
-        for (let dir = 0; dir < 8; dir++) {
-            for (let n = 0; n < this.numSquaresToEdge[startingSquare][dir]; n++) {
+        for (let dir = startDirIndex; dir < endDirIndex; dir++) {
+            for (let n = 0; n < this.numSquaresToEdge[startSquare][dir]; n++) {
                 
-                const targetSquare = startingSquare + this.directionOffsets[dir];
-                const pieceOnSquare = this.squares[targetSquare];
 
+                const targetSquare = startSquare + this.directionOffsets[dir] * (n + 1);
+                const pieceOnSquare = this.squares[targetSquare];
+                if(startSquare === 61){
+                    console.log({n, dir, targetSquare})
+                
+                }
                 //Piece is blocked by friendly
-                if(Piece.IsColor(targetSquare, this.friendlyColor)){
-                    break;
+                if(Piece.IsColor(pieceOnSquare, this.friendlyColor)){
+                    continue;
                 }
 
-                moves.push({startingSquare, endingSquare : targetSquare});
+                moves.push({startSquare, targetSquare});
 
-                if(Piece.IsColor(targetSquare, this.opponentColor)){
+                if(Piece.IsColor(pieceOnSquare, this.opponentColor)){
                 break;
                 }
             }
             
         }
+        return moves
+    }
 
+    private GenerateKnightMoves(startSquare : number){
+        //how the heck
     }
 
 }
+
 
 export class Piece{
     static Pawn = 1;

@@ -5,29 +5,32 @@ import './App.css'
 
 
 
-const gameBoard = new ChessBoard();
+const gameBoard = new ChessBoard("rnbqkbnr/pppppppp/8/8/8/8/8/RNBQKBNR");
 
-function BoardSquare(index : number, piece: number, litUpSquares: Array<number>, activePiece: number, updateLitSquares: React.Dispatch<SetStateAction<Array<number>>>, updateBoardState: React.Dispatch<SetStateAction<Array<number>>>, updateActivePiece: React.Dispatch<SetStateAction<number>>) {
+function BoardSquare(index : number, piece: number, litUpSquares: Array<number>, activePiece: number, updateLitSquares: React.Dispatch<SetStateAction<Array<number>>>, updateBoardState: React.Dispatch<SetStateAction<Array<number>>>, updateActiveSquare: React.Dispatch<SetStateAction<number>>) {
   //Get if the square is even for appropriate coloring
 
   const isLight = ((((index % 8) + Math.floor(index / 8)) + 1) % 2) != 0;
 
 
-  let shouldBeLit = litUpSquares.some((val) => { return val === index; });
-
+  let shouldBeLit = gameBoard.moves.some((move)=>{return move.startSquare === activePiece && move.targetSquare === index})
 
   function HandleClick() {
   
+  console.log({moves: gameBoard.moves, index, activePiece})
 
-    if (activePiece) {
-      //If this is lit try to move the piece
+    if (activePiece >= 0) {
+      //If there is an active piece
 
      
       if (shouldBeLit) {
         //Move piece
         return;
       }
-    }
+    } 
+      updateActiveSquare(index)
+
+  
 
     
 
@@ -52,10 +55,6 @@ function BoardSquare(index : number, piece: number, litUpSquares: Array<number>,
 function GameBoard(props: { boardState: (number)[], litUpSquares: number[], activePiece: number, updateLitSquares: React.Dispatch<SetStateAction<Array<number>>>, updateBoardState: React.Dispatch<SetStateAction<Array<number>>>, updateActivePiece: React.Dispatch<SetStateAction<number>> }) {
 
 
-
-
-
-  console.log(props.boardState)
 
   return (
     <>
