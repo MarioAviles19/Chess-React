@@ -8,7 +8,8 @@ export enum PlayMode{
 
 type Move = {
     startSquare : number,
-    targetSquare : number
+    targetSquare : number,
+    flags? : number
 }
 
 export class ChessBoard{ 
@@ -20,8 +21,11 @@ export class ChessBoard{
     public colorToMove : number = Piece.White;
 
     public moves : Move[] = [];
+    public lastTurnMoves : Move[] = [];
     private friendlyColor = Piece.White;
     private opponentColor = Piece.Black;
+
+    private pawnsNotMoved : number[] = [];
 
     private startingPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
     private directionOffsets = [-8, 8, -1, 1, -9, -7, 9, 7,]
@@ -42,8 +46,25 @@ export class ChessBoard{
     private AdvanceTurn(){
         this.turnNumber++;
 
+        this.colorToMove = (this.turnNumber % 2 == 0)? Piece.Black : Piece.White;
         this.opponentColor = (this.turnNumber % 2 == 0)? Piece.White : Piece.Black;
         this.friendlyColor = (this.turnNumber % 2 == 0)? Piece.Black : Piece.White;
+
+        this.lastTurnMoves = this.moves;
+        this.moves = this.GenerateMoves()
+        console.log(this.colorToMove == Piece.Black ? "Black" : "White")
+    }
+    public MovePiece(move : Move){
+        const piece = this.squares[move.startSquare];
+        this.squares[move.startSquare] = 0;
+        this.squares[move.targetSquare] = piece;
+
+        //Remove pawn from list of unmoved pawns
+        const pawnIndex = this.pawnsNotMoved.findIndex((square)=>{return square == move.startSquare});
+        if(pawnIndex > -1){
+            this.pawnsNotMoved.splice(pawnIndex, 1);
+        }
+        this.AdvanceTurn();
     }
 
 
@@ -63,6 +84,7 @@ export class ChessBoard{
             switch (char) {
                 case 'p':
                     this.squares[positionI] = Piece.Pawn | Piece.Black;
+                    this.pawnsNotMoved.push(positionI)
                     break;
             
                 case 'b':
@@ -87,6 +109,7 @@ export class ChessBoard{
             
                 case 'P':
                     this.squares[positionI] = Piece.Pawn | Piece.White;
+                    this.pawnsNotMoved.push(positionI)
                     break;
             
                 case 'B':
@@ -161,6 +184,9 @@ export class ChessBoard{
                 else if(Piece.IsPiece(piece, Piece.Knight)){
                     moves.push(...this.GenerateKnightMoves(i))
                 }
+                else if(Piece.IsPiece(piece, Piece.Pawn)){
+                    moves.push(...this.GeneratePawnMoves(i))
+                }
             }
         })
         return moves
@@ -180,13 +206,9 @@ export class ChessBoard{
 
                 const targetSquare = startSquare + this.directionOffsets[dir] * (n + 1);
                 const pieceOnSquare = this.squares[targetSquare];
-                if(startSquare === 61){
-                    console.log({n, dir, targetSquare})
-                
-                }
                 //Piece is blocked by friendly
                 if(Piece.IsColor(pieceOnSquare, this.friendlyColor)){
-                    continue;
+                    break;
                 }
 
                 moves.push({startSquare, targetSquare});
@@ -215,14 +237,14 @@ export class ChessBoard{
         let endIndex = 8;
 
         //Exclude offsets that would wrap around the board
-        if(distanceToEastEdge <= 2){
-            endIndex -= (distanceToEastEdge + 1) * 2
+        if(distanceToEastEdge <= 1){
+            endIndex -=  4 - (distanceToEastEdge * 2)
         }
 
-        if(distanceToWestEdge <= 2){
-            startIndex += (distanceToWestEdge + 1) * 2
+        if(distanceToWestEdge <= 1){
+            startIndex += 4 - (distanceToWestEdge * 2)
         }
-        console.log(startIndex)
+        console.log({startIndex, distanceToWestEdge, startSquare})
         //Change to for loop which cuts off the furthest left or right moves if the number of squares to the edge is too big
         for(let i = startIndex; i < endIndex; i++){
             const targetSquare = startSquare + offsets[i]
@@ -250,11 +272,63 @@ export class ChessBoard{
         return moves
 
     }
-    private GeneratePawnMoves(startingSquare : number){
+    private GeneratePawnMoves(startSquare : number){
+        let moves : Move[] = [];
 
+        const pawnHasNotMoved = this.pawnsNotMoved.some((val)=>{return val === startSquare})
+        let forwardDirectionMulitplier = this.colorToMove == Piece.Black ? 1 : -1;
+        const numSquaresToEdgeSouth = this.numSquaresToEdge[0]
+        const numSquaresToEdgeNorth = this.numSquaresToEdge[1]
+        const numSquaresToEdgeEast = this.numSquaresToEdge[3]
+        const numSquaresToEdgeWest = this.numSquaresToEdge[2]
+
+        const startIndex = pawnHasNotMoved? 0 : 1;
+        
+        let offsets = [16 * forwardDirectionMulitplier, 8 * forwardDirectionMulitplier, 8 * forwardDirectionMulitplier + 1, 8 * forwardDirectionMulitplier - 1]
+        let numToEdge = [forwardDirectionMulitplier == 1 ? numSquaresToEdgeSouth : numSquaresToEdgeNorth, forwardDirectionMulitplier == 1 ? numSquaresToEdgeSouth : numSquaresToEdgeNorth, numSquaresToEdgeEast, numSquaresToEdgeWest]
+        
+        for(let i = startIndex; i < 4; i++){
+            const targetSquare = startSquare + offsets[i];
+            if(numToEdge[i] <= 0){
+                //If there are no squares, don't count it
+                continue
+            }
+            const targetPiece = this.squares[targetSquare];
+            if(Piece.IsColor(targetPiece, this.colorToMove)){
+                //If piece is friendly, skip over it
+                continue
+            }
+            if(i > 1 && !Piece.IsColor(targetPiece, this.opponentColor)){
+                //If there is no enemy piece on diagonal, skip
+                continue
+            }
+            if(i < 2 && targetPiece){
+                //If there is a piece in front of the pawn, don't add the move
+                continue
+            }
+            moves.push({startSquare, targetSquare})
+            
+        }
+        console.log({PawnMoves: moves})
+        return moves;
+        
     }
-    private GenerateKingMoves(startingSquare : number){
+    private GenerateKingMoves(startSquare : number){
 
+        let moves : Move[] = [];
+
+        for(let dir = 0; dir < 8; dir++){
+            let targetSquare = startSquare + this.directionOffsets[dir];
+
+            if(Piece.IsColor(targetSquare, this.friendlyColor)){
+                //Skip if target is friendly
+                continue;
+            }
+            if(this.numSquaresToEdge[startSquare][dir] >= 0){
+                //If the move is on the board, add it
+                moves.push({startSquare, targetSquare})
+            }
+        }
     }
 
 }

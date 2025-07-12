@@ -5,7 +5,7 @@ import './App.css'
 
 
 
-const gameBoard = new ChessBoard("rnbqkbnr/pppppppp/8/8/8/8/8/RNBQKBNR");
+const gameBoard = new ChessBoard();
 
 function BoardSquare(index : number, piece: number, litUpSquares: Array<number>, activePiece: number, updateLitSquares: React.Dispatch<SetStateAction<Array<number>>>, updateBoardState: React.Dispatch<SetStateAction<Array<number>>>, updateActiveSquare: React.Dispatch<SetStateAction<number>>) {
   //Get if the square is even for appropriate coloring
@@ -16,23 +16,17 @@ function BoardSquare(index : number, piece: number, litUpSquares: Array<number>,
   let shouldBeLit = gameBoard.moves.some((move)=>{return move.startSquare === activePiece && move.targetSquare === index})
 
   function HandleClick() {
-  
-  console.log({moves: gameBoard.moves, index, activePiece})
 
     if (activePiece >= 0) {
       //If there is an active piece
 
      
       if (shouldBeLit) {
-        //Move piece
-        return;
+        gameBoard.MovePiece({startSquare : activePiece, targetSquare : index})
+        updateBoardState(gameBoard.squares)
       }
     } 
       updateActiveSquare(index)
-
-  
-
-    
 
 
   }
