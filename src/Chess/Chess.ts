@@ -21,11 +21,12 @@ export class ChessBoard{
     public colorToMove : number = Piece.White;
     
     public moves : Move[] = [];
+    private attackedSquares : number[] = []
     public lastTurnMoves : Move[] = [];
     private opponentColor = Piece.Black;
     
     private startingPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-    private directionOffsets = [-8, 8, -1, 1, -9, -7, 9, 7,]
+    private directionOffsets = [-8, 8, -1, 1, -9, -7, 7, 9]
     
     
     
@@ -145,7 +146,7 @@ export class ChessBoard{
     public GenerateMoves( opts = {shallow : false} ){
         
         let moves : Move[] = [];
-        
+        this.attackedSquares = BoardHelper.findAttackedSquares(this.squares, this.opponentColor)
         this.squares.forEach((piece, i)=>{
             if(Piece.IsColor(piece, this.colorToMove)){
                 if(Piece.IsSlidingPiece(piece)){
@@ -156,6 +157,9 @@ export class ChessBoard{
                 }
                 else if(Piece.IsPiece(piece, Piece.Pawn)){
                     moves.push(...this.GeneratePawnMoves(i))
+                }
+                else if(Piece.IsPiece(piece, Piece.King)){
+                    moves.push(...this.GenerateKingMoves(i))
                 }
             }
         })
@@ -181,11 +185,15 @@ export class ChessBoard{
         
         const startDirIndex = Piece.IsPiece(piece, Piece.Bishop) ? 4 : 0;
         const endDirIndex = Piece.IsPiece(piece, Piece.Rook) ? 4 : 8;
-        
+
+
+        if(Piece.IsPiece(this.squares[startSquare], Piece.Queen) && Piece.IsColor(this.squares[startSquare], Piece.White)){
+            console.log({ edge: this.numSquaresToEdge[startSquare],  offsets : this.directionOffsets});
+        }
         //Loop over each direction
         for (let dir = startDirIndex; dir < endDirIndex; dir++) {
             for (let n = 0; n < this.numSquaresToEdge[startSquare][dir]; n++) {
-                
+
                 
                 const targetSquare = startSquare + this.directionOffsets[dir] * (n + 1);
                 const pieceOnSquare = this.squares[targetSquare];
@@ -267,8 +275,6 @@ export class ChessBoard{
         
         const startIndex = pawnHasNotMoved? 0 : 1;
         
-        console.log({numSquaresToEdgeEast})
-        
         let offsets = [16 * forwardDirectionMulitplier, 8 * forwardDirectionMulitplier, 8 * forwardDirectionMulitplier + 1, 8 * forwardDirectionMulitplier - 1]
         let numToEdge = [forwardDirectionMulitplier == 1 ? numSquaresToEdgeSouth : numSquaresToEdgeNorth, forwardDirectionMulitplier == 1 ? numSquaresToEdgeSouth : numSquaresToEdgeNorth, numSquaresToEdgeEast, numSquaresToEdgeWest]
         
@@ -304,26 +310,31 @@ export class ChessBoard{
         
         for(let dir = 0; dir < 8; dir++){
             let targetSquare = startSquare + this.directionOffsets[dir];
-            
-            if(Piece.IsColor(targetSquare, this.colorToMove)){
+            let targetPiece = this.squares[targetSquare]
+            if(Piece.IsColor(targetPiece, this.colorToMove)){
                 //Skip if target is friendly
                 continue;
+            }
+            console.log(this.attackedSquares)
+            if(this.attackedSquares.some((square)=>{return targetSquare === square})){
+                //if the square is attacked, don't add it
+                continue
             }
             if(this.numSquaresToEdge[startSquare][dir] >= 0){
                 //If the move is on the board, make it and check whether 
                 moves.push({startSquare, targetSquare})
             }
         }
+        return moves
     }
-    
 }
 class BoardHelper{
-    static directionOffsets = [-8, 8, -1, 1, -9, -7, 9, 7,]
+    static directionOffsets = [-8, 8, -1, 1, -9, -7, 7, 9]
     
-    static findAttackedSquares(boardState : number[], attackingColor : number, moveData : { }){
+    static findAttackedSquares(boardState : number[], attackingColor : number){
         const numSquaresToEdge = BoardHelper.PrecomputedMoveData();
         
-        let attackedSquares = [];
+        let attackedSquares : number[] = [];
         
         boardState.forEach((piece, i)=>{
             if(Piece.IsColor(piece, attackingColor)){
@@ -346,7 +357,7 @@ class BoardHelper{
         
         function GenerateSlidingMoves(startSquare : number, piece : number){
             
-            const moves : Move[] = [];
+            const squares : number[] = [];
             
             const startDirIndex = Piece.IsPiece(piece, Piece.Bishop) ? 4 : 0;
             const endDirIndex = Piece.IsPiece(piece, Piece.Rook) ? 4 : 8;
@@ -359,7 +370,7 @@ class BoardHelper{
                     const targetSquare = startSquare + BoardHelper.directionOffsets[dir] * (n + 1);
                     const pieceOnSquare = boardState[targetSquare];
                     
-                    moves.push({startSquare, targetSquare});
+                    squares.push(targetSquare);
                     
                     if(pieceOnSquare){
                         break;
@@ -367,11 +378,11 @@ class BoardHelper{
                 }
                 
             }
-            return moves
+            return squares
         }
         
         function GenerateKnightMoves(startSquare : number){
-            let moves : Move[] = []
+            let squares : number[] = []
             //how the heck
             
             
@@ -403,14 +414,14 @@ class BoardHelper{
                     continue
                 }
                 
-                moves.push({startSquare, targetSquare})
+                    squares.push(targetSquare);
             }
             
-            return moves
+            return squares
             
         }
         function GeneratePawnMoves(startSquare : number){
-            let moves : Move[] = [];
+            let squares : number[] = [];
             
             const pawnHasNotMoved = true;
             let forwardDirectionMulitplier = attackingColor == Piece.Black ? 1 : -1;
@@ -428,25 +439,28 @@ class BoardHelper{
                     //If there are no squares, don't count it
                     continue
                 }
-                moves.push({startSquare, targetSquare})
+                squares.push(targetSquare);
+
                 
             }
-            return moves;
+            return squares;
             
         }
         function GenerateKingMoves(startSquare : number){
             
-            let moves : Move[] = [];
+            let squares : number[] = [];
             
             for(let dir = 0; dir < 8; dir++){
                 let targetSquare = startSquare + BoardHelper.directionOffsets[dir];
                 if(numSquaresToEdge[startSquare][dir] >= 0){
                     //If the move is on the board, add it
-                    moves.push({startSquare, targetSquare})
+                    squares.push(targetSquare);
                 }
             }
-            return moves;
+            return squares;
         }
+
+        return attackedSquares;
     }
     static PrecomputedMoveData(){
         let numSquaresToEdge = []

@@ -22,7 +22,7 @@ function BoardSquare(index : number, piece: number, litUpSquares: Array<number>,
 
      
       if (shouldBeLit) {
-        gameBoard.MovePiece({startSquare : activePiece, targetSquare : index})
+        gameBoard.MakeMove({startSquare : activePiece, targetSquare : index})
         updateBoardState(gameBoard.squares)
       }
     } 
