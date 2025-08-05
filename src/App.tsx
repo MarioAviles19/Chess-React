@@ -1,29 +1,46 @@
-import { SetStateAction, useState } from 'react'
-import { ChessBoard, Piece, PlayMode } from './Chess/Chess'
+import { SetStateAction, useRef, useState } from 'react'
+import { BoardHelper, ChessBoard, Piece, PlayMode } from './Chess/Chess'
 import { PieceToColorString, PieceToNameString } from './Chess/Util';
 import './App.css'
+import PromotionPopover from './Components/PromotionPopover';
 
 
 
 const gameBoard = new ChessBoard();
 
 function BoardSquare(index : number, piece: number, litUpSquares: Array<number>, activePiece: number, updateLitSquares: React.Dispatch<SetStateAction<Array<number>>>, updateBoardState: React.Dispatch<SetStateAction<Array<number>>>, updateActiveSquare: React.Dispatch<SetStateAction<number>>) {
+  
+  
   //Get if the square is even for appropriate coloring
 
   const isLight = ((((index % 8) + Math.floor(index / 8)) + 1) % 2) != 0;
+  let promoCallback = useRef<(piece : number)=>void>(()=>{console.log("meow")});
 
+  let [promoColor, updatePromoColor] = useState(PieceToColorString(piece))
 
+  let [promotionOpen, updatePromotionOpen] = useState(false);
   let shouldBeLit = gameBoard.moves.some((move)=>{return move.startSquare === activePiece && move.targetSquare === index})
-
+  const move = gameBoard.moves.find((move)=>{return move.startSquare === activePiece && move.targetSquare === index})
   function HandleClick() {
+
 
     if (activePiece >= 0) {
       //If there is an active piece
 
      
       if (shouldBeLit) {
-        gameBoard.MakeMove({startSquare : activePiece, targetSquare : index})
-        updateBoardState(gameBoard.squares)
+        if(move?.flags?.isPromotion){
+          updatePromoColor(PieceToColorString(activePiece))
+          console.log(PieceToColorString(activePiece))
+          console.log(promoColor)
+          promoCallback.current = (piece : number)=>{gameBoard.makeMoveWithPromotion(move, piece); updatePromotionOpen(false)}
+          console.log(promoCallback)
+          updatePromotionOpen(true)
+        } else{
+          gameBoard.MakeMove({startSquare : activePiece, targetSquare : index})
+          updateBoardState(gameBoard.squares)
+        }
+
       }
     } 
       updateActiveSquare(index)
@@ -38,6 +55,7 @@ function BoardSquare(index : number, piece: number, litUpSquares: Array<number>,
         <div onClick={HandleClick} key={index} className={(isLight ? "evenSquare" : "oddSquare") + " boardSquare" + (piece > 0? " hasPiece" : "")} >
           {piece ? <span className={"fas fa-chess-" + PieceToNameString(piece) + " " + (PieceToColorString(piece))}></span> : ""}
           {shouldBeLit ? <div className={'litOverlay' + (piece? " hasPiece" : "")}><div className="moveIndicator"></div></div> : <></>}
+          <PromotionPopover pieceColorString={promoColor} isOpen={promotionOpen} onSelectionCallback={(piece)=>{promoCallback.current(piece)} }/>            
         </div>
       )
     

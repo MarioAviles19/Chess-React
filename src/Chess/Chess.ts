@@ -8,7 +8,7 @@ export enum PlayMode{
 type Move = {
     startSquare : number,
     targetSquare : number,
-    flags? : number,
+    flags? : Partial<{isPromotion : boolean, isCastle : boolean}>,
     capture? : number
 }
 
@@ -16,6 +16,11 @@ export class ChessBoard{
     
     squares : Array<number>  = new Array(64).fill(0);
     numSquaresToEdge : Array<any>  = []
+
+    private colorToMoveInCheck = false;
+
+    private whiteKingLocation = 0;
+    private blackKingLocation = 0;
     
     public turnNumber : number = 1;
     public colorToMove : number = Piece.White;
@@ -37,7 +42,7 @@ export class ChessBoard{
         } else{
             this.LoadFromFen(fen);
         }
-        this.numSquaresToEdge = BoardHelper.PrecomputedMoveData();
+        this.numSquaresToEdge = BoardHelper.precomputedMoveData();
         this.moves = this.GenerateMoves();
     }
     
@@ -54,16 +59,42 @@ export class ChessBoard{
         this.MovePiece(move);
         this.AdvanceTurn();
     }
-    public MovePiece(move : Move){
+    MovePiece(move : Move){
         const piece = this.squares[move.startSquare];
         this.squares[move.startSquare] = 0;
         this.squares[move.targetSquare] = piece;
+
+        //Update king location
+        if(Piece.IsPiece(piece, Piece.King)){
+            if(Piece.IsColor(piece, Piece.White)){
+                this.whiteKingLocation = move.targetSquare;
+            } else{
+                this.blackKingLocation = move.targetSquare;
+            }
+        }
     }
     UnmovePiece(move : Move){
         //Move the piece back
-        const piece = this.squares[move.targetSquare];
+        let piece = this.squares[move.targetSquare];
+        if(move.flags?.isPromotion){
+            piece = Piece.Pawn
+        }
         this.squares[move.targetSquare] = move.capture || 0;
         this.squares[move.startSquare] = piece;
+
+                //Update king location
+        if(Piece.IsPiece(piece, Piece.King)){
+            if(Piece.IsColor(piece, Piece.White)){
+                this.whiteKingLocation = move.startSquare;
+            } else{
+                this.blackKingLocation = move.startSquare;
+            }
+        }
+    }
+    public makeMoveWithPromotion(move : Move, piece : number){
+        this.MovePiece(move)
+        this.squares[move.targetSquare] = piece | this.colorToMove
+        this.AdvanceTurn()
     }
     
     
@@ -103,6 +134,7 @@ export class ChessBoard{
                 
                 case 'k':
                 this.squares[positionI] = Piece.King | Piece.Black;
+                this.blackKingLocation = positionI;
                 break;
                 
                 case 'P':
@@ -127,6 +159,7 @@ export class ChessBoard{
                 
                 case 'K':
                 this.squares[positionI] = Piece.King | Piece.White;
+                this.whiteKingLocation = positionI;
                 break;
                 case '/':
                 continue
@@ -143,8 +176,9 @@ export class ChessBoard{
     
     
     
-    public GenerateMoves( opts = {shallow : false} ){
+    public GenerateMoves(){
         
+
         let moves : Move[] = [];
         this.attackedSquares = BoardHelper.findAttackedSquares(this.squares, this.opponentColor)
         this.squares.forEach((piece, i)=>{
@@ -163,20 +197,8 @@ export class ChessBoard{
                 }
             }
         })
+        moves = this.CullCheckMoves(moves);
         return moves
-    }
-    public GenerateAttackData(boardState : number[]){
-        let attackedSquares = [];
-        let originalColorToMove = this.colorToMove
-        let originalopponentColor = this.opponentColor
-        let originalboardState = this.squares;
-        this.squares = boardState
-        
-        this.colorToMove = originalopponentColor
-        this.opponentColor = originalColorToMove
-        
-        attackedSquares = this.GenerateMoves({shallow : true})
-        
     }
     
     private GenerateSlidingMoves(startSquare : number, piece : number){
@@ -186,10 +208,6 @@ export class ChessBoard{
         const startDirIndex = Piece.IsPiece(piece, Piece.Bishop) ? 4 : 0;
         const endDirIndex = Piece.IsPiece(piece, Piece.Rook) ? 4 : 8;
 
-
-        if(Piece.IsPiece(this.squares[startSquare], Piece.Queen) && Piece.IsColor(this.squares[startSquare], Piece.White)){
-            console.log({ edge: this.numSquaresToEdge[startSquare],  offsets : this.directionOffsets});
-        }
         //Loop over each direction
         for (let dir = startDirIndex; dir < endDirIndex; dir++) {
             for (let n = 0; n < this.numSquaresToEdge[startSquare][dir]; n++) {
@@ -202,7 +220,7 @@ export class ChessBoard{
                     break;
                 }
                 
-                moves.push({startSquare, targetSquare});
+                moves.push({startSquare, targetSquare, capture: pieceOnSquare});
                 
                 if(Piece.IsColor(pieceOnSquare, this.opponentColor)){
                     break;
@@ -235,7 +253,6 @@ export class ChessBoard{
         if(distanceToWestEdge <= 1){
             startIndex += 4 - (distanceToWestEdge * 2)
         }
-        console.log({startIndex, distanceToWestEdge, startSquare})
         //Change to for loop which cuts off the furthest left or right moves if the number of squares to the edge is too big
         for(let i = startIndex; i < endIndex; i++){
             const targetSquare = startSquare + offsets[i]
@@ -255,7 +272,7 @@ export class ChessBoard{
                 continue
             }
             
-            moves.push({startSquare, targetSquare})
+            moves.push({startSquare, targetSquare, capture: pieceOnSquare})
             
             
         }
@@ -266,20 +283,39 @@ export class ChessBoard{
     private GeneratePawnMoves(startSquare : number){
         let moves : Move[] = [];
         
-        const pawnHasNotMoved = true;
+        const pawn = this.squares[startSquare];
+
+        let startRank = BoardHelper.getRank(startSquare)
+        let pawnCanDoubleJump = false;
+        let isPromotion = false;
+
+        //Calculate whether pawn can double jump 
+        if(startRank === 2 && Piece.IsColor(pawn, Piece.White)){
+            pawnCanDoubleJump = true
+        } else if(startRank === 7 && Piece.IsColor(pawn, Piece.Black)){
+            pawnCanDoubleJump = true
+        }
+
+        
+
         let forwardDirectionMulitplier = this.colorToMove == Piece.Black ? 1 : -1;
         const numSquaresToEdgeSouth = this.numSquaresToEdge[startSquare][0]
         const numSquaresToEdgeNorth = this.numSquaresToEdge[startSquare][1]
         const numSquaresToEdgeEast = this.numSquaresToEdge[startSquare][3]
         const numSquaresToEdgeWest = this.numSquaresToEdge[startSquare][2]
         
-        const startIndex = pawnHasNotMoved? 0 : 1;
+        const startIndex = pawnCanDoubleJump? 0 : 1;
         
         let offsets = [16 * forwardDirectionMulitplier, 8 * forwardDirectionMulitplier, 8 * forwardDirectionMulitplier + 1, 8 * forwardDirectionMulitplier - 1]
         let numToEdge = [forwardDirectionMulitplier == 1 ? numSquaresToEdgeSouth : numSquaresToEdgeNorth, forwardDirectionMulitplier == 1 ? numSquaresToEdgeSouth : numSquaresToEdgeNorth, numSquaresToEdgeEast, numSquaresToEdgeWest]
         
         for(let i = startIndex; i < 4; i++){
             const targetSquare = startSquare + offsets[i];
+            const targetRank = BoardHelper.getRank(targetSquare)
+            //Calculate whether move is a promotion
+            if(targetRank === 1 || targetRank === 8){
+                isPromotion = true;
+            }
             if(numToEdge[i] <= 0){
                 //If there are no squares, don't count it
                 continue
@@ -297,10 +333,9 @@ export class ChessBoard{
                 //If there is a piece in front of the pawn, don't add the move
                 continue
             }
-            moves.push({startSquare, targetSquare})
+            moves.push({startSquare, targetSquare, capture: targetPiece, flags : { isPromotion }})
             
         }
-        console.log({PawnMoves: moves})
         return moves;
         
     }
@@ -315,24 +350,43 @@ export class ChessBoard{
                 //Skip if target is friendly
                 continue;
             }
-            console.log(this.attackedSquares)
             if(this.attackedSquares.some((square)=>{return targetSquare === square})){
                 //if the square is attacked, don't add it
                 continue
             }
-            if(this.numSquaresToEdge[startSquare][dir] >= 0){
+            if(this.numSquaresToEdge[startSquare][dir] > 0){
                 //If the move is on the board, make it and check whether 
-                moves.push({startSquare, targetSquare})
+                moves.push({startSquare, targetSquare, capture: targetPiece})
             }
         }
         return moves
     }
+    private CullCheckMoves(moves : Move[]){
+        let legalMoves : Move[] = [];
+        let kingPosiiton = Piece.IsColor(this.colorToMove, Piece.White) ? this.whiteKingLocation : this.blackKingLocation;
+        for(let i = 0; i < moves.length; i++){
+            if(moves[i].targetSquare > 63 || moves[i].targetSquare < 0){
+                console.log(moves[i]);
+                continue;
+            }
+            this.MovePiece(moves[i])
+            let attackedSquares = BoardHelper.findAttackedSquares(this.squares, this.opponentColor);
+            this.UnmovePiece(moves[i]);
+            if(attackedSquares.some((square)=>square === kingPosiiton)){
+                //If the result of the move is a check, don't add it
+                console.log(moves[i])
+                continue
+            }
+            legalMoves.push(moves[i]);
+        }
+        return legalMoves;
+    }
 }
-class BoardHelper{
+export class BoardHelper{
     static directionOffsets = [-8, 8, -1, 1, -9, -7, 7, 9]
     
     static findAttackedSquares(boardState : number[], attackingColor : number){
-        const numSquaresToEdge = BoardHelper.PrecomputedMoveData();
+        const numSquaresToEdge = BoardHelper.precomputedMoveData();
         
         let attackedSquares : number[] = [];
         
@@ -462,7 +516,7 @@ class BoardHelper{
 
         return attackedSquares;
     }
-    static PrecomputedMoveData(){
+    static precomputedMoveData(){
         let numSquaresToEdge = []
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
@@ -489,6 +543,10 @@ class BoardHelper{
             } 
         }
         return numSquaresToEdge;
+    }
+    static getRank(index : number){
+        //9 because the board is built from top to bottom
+        return 9 - Math.floor((index/ 8) + 1);
     }
 }
 
